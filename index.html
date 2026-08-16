@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UHD Screensaver & Web Radio Portal - Hisense v3</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background-color: #000; font-family: 'Segoe UI', Roboto, sans-serif; color: #fff; }
+
+        /* Écran de démarrage Hisense */
+        #boot-splash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #000000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 1.2s ease-out;
+        }
+
+        .brand-logo {
+            font-size: 4.5rem;
+            font-weight: 900;
+            letter-spacing: 14px;
+            color: #ffffff;
+            text-transform: uppercase;
+            margin-bottom: 25px;
+            text-shadow: 0 0 25px rgba(255, 255, 255, 0.5);
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid #e50914;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Container Vidéo Arrière-plan */
+        #video-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        video { width: 100%; height: 100%; object-fit: cover; }
+
+        /* Overlay Radio (Interface Graphique) */
+        #radio-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 11, 16, 0.88);
+            backdrop-filter: blur(15px);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 1;
+            transition: opacity 0.8s ease, visibility 0.8s ease;
+            visibility: visible;
+        }
+
+        .radio-hidden {
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none;
+        }
+
+        .radio-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+            width: 90%;
+            max-width: 520px;
+            text-align: center;
+        }
+
+        .radio-title { font-size: 2.2rem; font-weight: 700; margin-bottom: 12px; color: #ffffff; }
+        .station-info { font-size: 1.2rem; color: #e50914; font-weight: 600; margin-bottom: 25px; }
+
+        .station-select {
+            width: 100%;
+            padding: 16px;
+            border-radius: 12px;
+            background: #14161d;
+            color: #fff;
+            border: 1px solid #333645;
+            font-size: 1.1rem;
+            margin-bottom: 25px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .radio-status-tag {
+            display: inline-block;
+            background: rgba(229, 9, 20, 0.2);
+            color: #ff4d4d;
+            border: 1px solid rgba(229, 9, 20, 0.5);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-top: 15px;
+        }
+
+        /* Barre d'outils UI Bottom */
+        #ui-bar {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(18, 18, 18, 0.95);
+            border: 1px solid #333333;
+            padding: 12px 24px;
+            border-radius: 12px;
+            display: flex;
+            gap: 12px;
+            z-index: 100;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.8);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .ui-hidden {
+            opacity: 0;
+            transform: translate(-50%, 20px) !important;
+            pointer-events: none;
+        }
+
+        button {
+            background: #22252c;
+            color: #ffffff;
+            border: 1px solid #444855;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        button:focus, button:hover {
+            background: #e50914;
+            border-color: #ffffff;
+            outline: none;
+            box-shadow: 0 0 12px rgba(229, 9, 20, 0.6);
+        }
+
+        .btn-off {
+            background: #900c3f;
+            border-color: #ff2e63;
+        }
+
+        .btn-off:focus, .btn-off:hover {
+            background: #ff0000;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.8);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Écran de Démarrage Hisense -->
+    <div id="boot-splash">
+        <div class="brand-logo">HISENSE</div>
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Lecteur Vidéo UHD (Fond d'écran permanent) -->
+    <div id="video-container">
+        <video id="uhd-player" autoplay muted playsinline preload="auto">
+            <source id="video-source" src="media/videoplayback1boot.mp4" type="video/mp4">
+            Votre navigateur ne supporte pas la lecture vidéo.
+        </video>
+    </div>
+
+    <!-- Interface Graphique Radio Web (Overlay Flouté) -->
+    <div id="radio-overlay">
+        <div class="radio-card">
+            <div class="radio-title">📻 Web Radio HD</div>
+            <div id="station-name" class="station-info">Sélectionne une station pour démarrer</div>
+
+            <select id="station-select" class="station-select" onchange="changeStation(this.value)">
+                <option value="">-- Choisir une station --</option>
+                <option value="https://stream.fip.fr/fip-midfi.mp3">FIP Radio</option>
+                <option value="https://icecast.radiofrance.fr/mouv-midfi.mp3">Mouv'</option>
+                <option value="https://swr-swr3-live.cast.addradio.de/swr/swr3/live/mp3/128/stream.mp3">SWR3 (Funk / Pop)</option>
+            </select>
+
+            <audio id="radio-player" controls style="width: 100%; border-radius: 8px;"></audio>
+            
+            <div>
+                <span id="radio-status" class="radio-status-tag">Radio Inactive</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Barre d'outils UI Bottom -->
+    <div id="ui-bar">
+        <button id="btn-radio-toggle" onclick="showRadioUI()" tabindex="1">📻 Afficher Radio</button>
+        <button onclick="toggleFullscreen()" tabindex="2">Plein Écran (Flèche Bas)</button>
+        <button class="btn-off" onclick="turnOffAll()" tabindex="3">🛑 Éteindre / Stop</button>
+    </div>
+
+    <script>
+        const bootSplash = document.getElementById('boot-splash');
+        const uhdPlayer = document.getElementById('uhd-player');
+        const videoSource = document.getElementById('video-source');
+        const radioOverlay = document.getElementById('radio-overlay');
+        const radioPlayer = document.getElementById('radio-player');
+        const stationName = document.getElementById('station-name');
+        const radioStatus = document.getElementById('radio-status');
+        const uiBar = document.getElementById('ui-bar');
+
+        // Playlist vidéo (Vidéo 1 Boot -> Vidéo 2 -> Vidéo 3 -> ...)
+        const playlist = [
+            "media/videoplayback1boot.mp4",
+            "media/videoplayback2.mp4",
+            "media/videoplayback3.mp4",
+            "media/videoplayback4.mp4"
+        ];
+        let currentVideoIndex = 0;
+
+        let radioTimer = null;
+        let uiTimer = null;
+        let isRadioPlaying = false;
+
+        // Auto-Play au Boot
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                bootSplash.style.opacity = '0';
+                setTimeout(() => bootSplash.remove(), 1200);
+            }, 2500);
+            // La vidéo tourne toujours sans son
+            uhdPlayer.muted = true;
+            uhdPlayer.play().catch(e => console.log(e));
+        });
+
+        // Gestion de l'enchaînement des vidéos
+        uhdPlayer.addEventListener('ended', () => {
+            currentVideoIndex++;
+            if (currentVideoIndex >= playlist.length) {
+                currentVideoIndex = 1; // Boucle sur les vidéos de test (exclut le boot)
+            }
+            playVideoIndex(currentVideoIndex);
+        });
+
+        function playVideoIndex(index) {
+            videoSource.src = playlist[index];
+            uhdPlayer.load();
+            uhdPlayer.muted = true; // Forcer muet pour ne pas couper le son de la radio
+            uhdPlayer.play().catch(e => console.log("Erreur vidéo:", e));
+        }
+
+        // --- GESTION RADIO & TIMER 2 MINUTES ---
+
+        function changeStation(url) {
+            if (!url) return;
+
+            radioPlayer.src = url;
+            radioPlayer.play();
+            isRadioPlaying = true;
+
+            const select = document.getElementById('station-select');
+            stationName.innerText = "En écoute : " + select.options[select.selectedIndex].text;
+            radioStatus.innerText = "● EN DIRECT (Vidéo sans son)";
+            radioStatus.style.borderColor = "#28a745";
+            radioStatus.style.color = "#28a745";
+
+            // S'assurer que la vidéo tourne bien en fond et MUETTE
+            uhdPlayer.muted = true;
+            if (uhdPlayer.paused) {
+                uhdPlayer.play();
+            }
+
+            resetRadioInactivityTimer();
+        }
+
+        // Réinitialise le timer de 2 minutes pour masquer l'interface radio
+        function resetRadioInactivityTimer() {
+            clearTimeout(radioTimer);
+            if (isRadioPlaying) {
+                // Au bout de 2 minutes (120 000 ms), masquer l'interface radio
+                radioTimer = setTimeout(() => {
+                    hideRadioUI();
+                }, 120000); 
+            }
+        }
+
+        function hideRadioUI() {
+            radioOverlay.classList.add('radio-hidden');
+            uiBar.classList.add('ui-hidden');
+        }
+
+        function showRadioUI() {
+            radioOverlay.classList.remove('radio-hidden');
+            resetUiTimer();
+            resetRadioInactivityTimer();
+        }
+
+        // --- GESTION INTERACTIONS TÉLÉCOMMANDE & SOURIS ---
+
+        function handleUserActivity() {
+            resetUiTimer();
+            // Réafficher l'interface radio au moindre appui de touche/télécommande
+            if (radioOverlay.classList.contains('radio-hidden')) {
+                showRadioUI();
+            } else {
+                resetRadioInactivityTimer();
+            }
+        }
+
+        window.addEventListener('mousemove', handleUserActivity);
+
+        window.addEventListener('keydown', (e) => {
+            handleUserActivity();
+
+            switch(e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    toggleFullscreen();
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    if (radioOverlay.classList.contains('radio-hidden')) {
+                        showRadioUI();
+                    } else {
+                        hideRadioUI();
+                    }
+                    break;
+                case 'Enter':
+                    if (!document.fullscreenElement) {
+                        toggleFullscreen();
+                    }
+                    break;
+            }
+        });
+
+        // Masquage rapide de la barre d'outils du bas (3.5s)
+        function resetUiTimer() {
+            uiBar.classList.remove('ui-hidden');
+            clearTimeout(uiTimer);
+            uiTimer = setTimeout(() => {
+                uiBar.classList.add('ui-hidden');
+            }, 3500);
+        }
+
+        // BOUTON ÉTEINDRE / STOP TOTAL
+        function turnOffAll() {
+            isRadioPlaying = false;
+            clearTimeout(radioTimer);
+            radioPlayer.pause();
+            radioPlayer.src = "";
+            uhdPlayer.pause();
+            stationName.innerText = "Système arrêté";
+            radioStatus.innerText = "Radio Inactive";
+            radioStatus.style.borderColor = "rgba(229, 9, 20, 0.5)";
+            radioStatus.style.color = "#ff4d4d";
+            showRadioUI();
+        }
+
+        // Plein Écran
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => console.log(err));
+            } else {
+                document.exitFullscreen().catch(err => console.log(err));
+            }
+        }
+    </script>
+</body>
+</html>
