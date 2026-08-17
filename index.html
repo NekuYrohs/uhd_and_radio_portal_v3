@@ -25,9 +25,28 @@
     --radius-sm:9px;
   }
 
-  *{margin:0;padding:0;box-sizing:border-box;}
-  html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);
-    font-family:'Inter',sans-serif;color:var(--text);}
+  /* Désactive la sélection de texte, masque le curseur et le trait clignotant */
+  *, html, body, iframe, video, button, select {
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    caret-color: transparent !important; /* Masque le trait clignotant */
+    outline: none !important;           /* Supprime le cadre d'enfoncement */
+    cursor: none !important;            /* Masque le curseur de la souris */
+  }
+
+  html,body{
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:var(--bg);
+    font-family:'Inter',sans-serif;
+    color:var(--text);
+  }
   ::selection{background:var(--amber);color:#0a0a0a;}
 
   /* ============ BOOT SPLASH ============ */
@@ -300,9 +319,7 @@ const playlist = [
 ];
 
 /* ============================================================
-   BIBLIOTHÈQUE RADIO — fusion intelligente & dédupliquée entre
-   le portail Hisense (FIP / Mouv' / SWR3) et l'index radio
-   du projet "ufc-hiit-timer" (flux FLAC / AAC Hi-Res)
+   BIBLIOTHÈQUE RADIO
    ============================================================ */
 const stations = [
   // -- Radio France --
@@ -374,7 +391,7 @@ window.addEventListener('load', () => {
 });
 
 /* ============================================================
-   HORLOGE (signature du screensaver)
+   HORLOGE
    ============================================================ */
 function startClock(){
   const update = () => {
@@ -389,18 +406,14 @@ function startClock(){
 }
 
 /* ============================================================
-   PLAYLIST VIDÉO — double buffer + fondu enchaîné
-   Le clip suivant est préchargé en arrière-plan pendant la
-   lecture du clip actif, puis les deux fondent l'un dans
-   l'autre : boucle propre, sans coupure ni flash noir.
+   PLAYLIST VIDÉO
    ============================================================ */
-let activeSlot = 0;              // index dans videoEls[] du lecteur visible
-let playIndex  = 0;              // index dans playlist[] en cours de lecture
-let transitionArmed = false;     // évite un double déclenchement (timeupdate + ended)
+let activeSlot = 0;
+let playIndex  = 0;
+let transitionArmed = false;
 
 function startVideoLoop(){
   const active = videoEls[activeSlot];
-  const next   = videoEls[1 - activeSlot];
 
   active.muted = true;
   active.src = playlist[playIndex];
@@ -455,8 +468,6 @@ function crossfadeToNext(){
   playIndex = (playIndex + 1) % playlist.length;
   transitionArmed = false;
 
-  // Une fois le fondu terminé, on remet l'ancien lecteur en pause
-  // et on précharge le prochain clip dedans.
   setTimeout(() => {
     outgoing.pause();
     preloadNext();
@@ -464,7 +475,7 @@ function crossfadeToNext(){
 }
 
 /* ============================================================
-   CONSTRUCTION UI RADIO — onglets + grille
+   CONSTRUCTION UI RADIO
    ============================================================ */
 function buildTabs(){
   tabsEl.innerHTML = "";
@@ -573,11 +584,9 @@ function resetUiTimer(){
 }
 
 /* ============================================================
-   MODE SCREENSAVER — au bout de 2 min sans interaction,
-   l'appli repasse en vidéo plein écran, sans interface,
-   avec la radio (si active) qui continue en fond sonore.
+   MODE SCREENSAVER
    ============================================================ */
-const SCREENSAVER_DELAY = 120000; // 2 minutes
+const SCREENSAVER_DELAY = 120000;
 let screensaverTimer = null;
 
 function resetScreensaverTimer(){
@@ -598,7 +607,7 @@ function enterScreensaverMode(){
 }
 
 /* ============================================================
-   VEILLE (bouton "power")
+   VEILLE
    ============================================================ */
 function enterStandby(){
   hideRadioUI();
@@ -624,7 +633,7 @@ function toggleFullscreen(){
 }
 
 /* ============================================================
-   NAVIGATION TÉLÉCOMMANDE (grille + onglets)
+   NAVIGATION TÉLÉCOMMANDE
    ============================================================ */
 const focus = { zone:'tabs', tab:0, grid:0 };
 const GRID_COLS = 3;
@@ -642,9 +651,7 @@ window.addEventListener('mousemove', handleUserActivity);
 function handleUserActivity(){
   resetUiTimer();
   if (standbyEl.classList.contains('show')) return;
-  if (radioOverlay.classList.contains('radio-hidden')){
-    // laisse l'utilisateur naviguer sans forcer la réouverture au simple survol souris
-  } else {
+  if (!radioOverlay.classList.contains('radio-hidden')){
     resetRadioInactivityTimer();
   }
 }
@@ -668,7 +675,6 @@ window.addEventListener('keydown', (e) => {
     return;
   }
 
-  // Panneau radio ouvert : navigation grille / onglets
   const list = filteredStations();
   switch(e.key){
     case 'ArrowRight':
