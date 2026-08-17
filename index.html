@@ -1,391 +1,723 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UHD Screensaver & Web Radio Portal - Hisense v3</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body, html { width: 100%; height: 100%; overflow: hidden; background-color: #000; font-family: 'Segoe UI', Roboto, sans-serif; color: #fff; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UHD Screensaver & Web Radio Portal — Hisense v4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#05060a;
+    --surface:rgba(16,18,26,0.66);
+    --surface-strong:rgba(16,18,26,0.86);
+    --border:rgba(255,255,255,0.09);
+    --text:#F5F6FA;
+    --text-dim:#9AA0AE;
+    --cyan:#29D8FF;      /* accent "image / UHD" */
+    --cyan-dim:rgba(41,216,255,0.16);
+    --amber:#FFB020;     /* accent "radio / son" */
+    --amber-dim:rgba(255,176,32,0.16);
+    --danger:#FF4757;
+    --radius-lg:22px;
+    --radius-md:14px;
+    --radius-sm:9px;
+  }
 
-        /* Écran de démarrage Hisense */
-        #boot-splash {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background-color: #000000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            transition: opacity 1.2s ease-out;
-        }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);
+    font-family:'Inter',sans-serif;color:var(--text);}
+  ::selection{background:var(--amber);color:#0a0a0a;}
 
-        .brand-logo {
-            font-size: 4.5rem;
-            font-weight: 900;
-            letter-spacing: 14px;
-            color: #ffffff;
-            text-transform: uppercase;
-            margin-bottom: 25px;
-            text-shadow: 0 0 25px rgba(255, 255, 255, 0.5);
-        }
+  /* ============ BOOT SPLASH ============ */
+  #boot-splash{
+    position:fixed;inset:0;background:#000;z-index:9999;
+    display:flex;flex-direction:column;justify-content:center;align-items:center;gap:26px;
+    transition:opacity 1s ease;
+  }
+  .boot-mark{
+    font-family:'Archivo Black',sans-serif;font-size:clamp(2.6rem,6vw,4.4rem);
+    letter-spacing:.18em;color:#fff;text-transform:uppercase;position:relative;
+    animation:boot-in 1.4s cubic-bezier(.16,1,.3,1) both;
+  }
+  .boot-mark::after{
+    content:"";position:absolute;left:0;bottom:-10px;height:2px;width:100%;
+    background:linear-gradient(90deg,var(--cyan),var(--amber));
+    transform:scaleX(0);transform-origin:left;animation:boot-line 1.1s .5s cubic-bezier(.16,1,.3,1) forwards;
+  }
+  .boot-sub{font-size:.78rem;letter-spacing:.4em;color:var(--text-dim);text-transform:uppercase;
+    animation:boot-in 1.4s .2s cubic-bezier(.16,1,.3,1) both;}
+  @keyframes boot-in{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+  @keyframes boot-line{to{transform:scaleX(1);}}
 
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid rgba(255, 255, 255, 0.1);
-            border-top: 4px solid #e50914;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
+  /* ============ VIDEO (double buffer + fondu enchaîné) ============ */
+  #video-container{position:absolute;inset:0;z-index:1;background:#000;}
+  #video-container video{
+    position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+    opacity:0;transition:opacity 1s ease;
+  }
+  #video-container video.is-active{opacity:.92;}
+  #vignette{position:absolute;inset:0;z-index:2;pointer-events:none;
+    background:
+      radial-gradient(ellipse at center,rgba(0,0,0,0) 45%,rgba(0,0,0,.55) 100%),
+      linear-gradient(180deg,rgba(0,0,0,.35) 0%,rgba(0,0,0,0) 18%,rgba(0,0,0,0) 72%,rgba(0,0,0,.55) 100%);
+  }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+  /* ============ CLOCK (screensaver signature) ============ */
+  #clock-wrap{
+    position:absolute;top:5%;left:5%;z-index:5;
+    transition:opacity .6s ease,transform .6s ease;
+    text-shadow:0 4px 30px rgba(0,0,0,.7);
+  }
+  #clock-time{font-family:'Archivo Black',sans-serif;font-size:clamp(2.4rem,5vw,3.6rem);
+    letter-spacing:.02em;line-height:1;}
+  #clock-date{margin-top:6px;font-size:.95rem;letter-spacing:.12em;text-transform:capitalize;color:var(--text-dim);}
+  #clock-wrap.dim{opacity:.55;}
 
-        /* Container Vidéo Arrière-plan */
-        #video-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-        }
+  #now-playing-pill{
+    position:absolute;top:5%;right:5%;z-index:5;display:none;align-items:center;gap:10px;
+    background:var(--surface);border:1px solid var(--border);backdrop-filter:blur(14px);
+    padding:10px 18px 10px 12px;border-radius:999px;transition:opacity .5s ease,transform .5s ease;
+  }
+  #now-playing-pill.show{display:flex;}
+  #now-playing-pill .dot{width:8px;height:8px;border-radius:50%;background:var(--amber);
+    box-shadow:0 0 10px var(--amber);animation:pulse-dot 1.6s ease-in-out infinite;}
+  @keyframes pulse-dot{0%,100%{opacity:1;}50%{opacity:.35;}}
+  #now-playing-pill .np-text{font-size:.85rem;font-weight:600;letter-spacing:.02em;max-width:280px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #now-playing-pill .eq{display:flex;align-items:flex-end;gap:2px;height:14px;}
+  #now-playing-pill .eq span{width:3px;background:var(--amber);border-radius:2px;
+    animation:eqbar 1s ease-in-out infinite;}
+  #now-playing-pill .eq span:nth-child(1){animation-delay:-.9s;}
+  #now-playing-pill .eq span:nth-child(2){animation-delay:-.5s;}
+  #now-playing-pill .eq span:nth-child(3){animation-delay:-.2s;}
+  @keyframes eqbar{0%,100%{height:3px;}50%{height:14px;}}
 
-        video { width: 100%; height: 100%; object-fit: cover; }
+  /* ============ RADIO OVERLAY ============ */
+  #radio-overlay{
+    position:absolute;inset:0;z-index:10;
+    background:rgba(4,5,8,0.72);backdrop-filter:blur(22px) saturate(1.1);
+    display:flex;justify-content:center;align-items:center;
+    opacity:1;visibility:visible;transition:opacity .55s ease,visibility .55s ease;
+  }
+  .radio-hidden{opacity:0 !important;visibility:hidden !important;pointer-events:none;}
 
-        /* Overlay Radio (Interface Graphique) */
-        #radio-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(10, 11, 16, 0.88);
-            backdrop-filter: blur(15px);
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            opacity: 1;
-            transition: opacity 0.8s ease, visibility 0.8s ease;
-            visibility: visible;
-        }
+  .radio-card{
+    width:min(920px,92vw);max-height:82vh;
+    background:var(--surface-strong);border:1px solid var(--border);
+    border-radius:var(--radius-lg);box-shadow:0 30px 80px rgba(0,0,0,.75);
+    padding:34px 36px 26px;display:flex;flex-direction:column;gap:20px;
+  }
 
-        .radio-hidden {
-            opacity: 0 !important;
-            visibility: hidden !important;
-            pointer-events: none;
-        }
+  .radio-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;}
+  .radio-head h1{font-family:'Archivo Black',sans-serif;font-size:1.7rem;letter-spacing:.02em;}
+  .radio-head h1 span{color:var(--amber);}
+  .radio-head p{margin-top:6px;color:var(--text-dim);font-size:.88rem;}
+  .status-tag{
+    display:flex;align-items:center;gap:8px;background:var(--amber-dim);
+    border:1px solid rgba(255,176,32,.4);color:var(--amber);
+    padding:8px 14px;border-radius:999px;font-size:.78rem;font-weight:700;
+    letter-spacing:.04em;white-space:nowrap;
+  }
+  .status-tag .status-dot{width:7px;height:7px;border-radius:50%;background:var(--amber);}
+  .status-tag.off{background:rgba(255,255,255,.05);border-color:var(--border);color:var(--text-dim);}
+  .status-tag.off .status-dot{background:var(--text-dim);}
 
-        .radio-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            padding: 40px;
-            border-radius: 24px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
-            width: 90%;
-            max-width: 520px;
-            text-align: center;
-        }
+  /* Tabs */
+  #tabs{display:flex;gap:8px;flex-wrap:wrap;}
+  .tab{
+    background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--text-dim);
+    padding:9px 16px;border-radius:999px;font-size:.82rem;font-weight:600;letter-spacing:.02em;
+    cursor:pointer;transition:all .18s ease;
+  }
+  .tab:hover{color:var(--text);border-color:rgba(255,255,255,.25);}
+  .tab.active{background:var(--cyan);border-color:var(--cyan);color:#031014;}
+  .tab.tab-focus{outline:2px solid var(--cyan);outline-offset:2px;}
 
-        .radio-title { font-size: 2.2rem; font-weight: 700; margin-bottom: 12px; color: #ffffff; }
-        .station-info { font-size: 1.2rem; color: #e50914; font-weight: 600; margin-bottom: 25px; }
+  /* Grid */
+  #station-grid{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:12px;overflow-y:auto;padding:4px 2px 8px;
+    scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent;
+  }
+  #station-grid::-webkit-scrollbar{width:6px;}
+  #station-grid::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:6px;}
 
-        .station-select {
-            width: 100%;
-            padding: 16px;
-            border-radius: 12px;
-            background: #14161d;
-            color: #fff;
-            border: 1px solid #333645;
-            font-size: 1.1rem;
-            margin-bottom: 25px;
-            outline: none;
-            cursor: pointer;
-        }
+  .station-tile{
+    position:relative;background:rgba(255,255,255,.035);border:1px solid var(--border);
+    border-radius:var(--radius-md);padding:14px 16px;cursor:pointer;
+    display:flex;flex-direction:column;gap:8px;text-align:left;
+    transition:background .15s ease,border-color .15s ease,transform .15s ease;
+  }
+  .station-tile:hover{background:rgba(255,255,255,.07);transform:translateY(-2px);}
+  .station-tile.tile-focus{border-color:var(--cyan);box-shadow:0 0 0 2px var(--cyan-dim);}
+  .station-tile.playing{border-color:var(--amber);background:var(--amber-dim);}
 
-        .radio-status-tag {
-            display: inline-block;
-            background: rgba(229, 9, 20, 0.2);
-            color: #ff4d4d;
-            border: 1px solid rgba(229, 9, 20, 0.5);
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            margin-top: 15px;
-        }
+  .tile-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+  .tile-name{font-size:.92rem;font-weight:700;letter-spacing:.01em;line-height:1.25;}
+  .tile-quality{font-size:.66rem;font-weight:700;letter-spacing:.06em;color:var(--text-dim);
+    background:rgba(255,255,255,.06);padding:3px 7px;border-radius:6px;white-space:nowrap;}
+  .tile-cat{font-size:.72rem;color:var(--text-dim);}
 
-        /* Barre d'outils UI Bottom */
-        #ui-bar {
-            position: absolute;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(18, 18, 18, 0.95);
-            border: 1px solid #333333;
-            padding: 12px 24px;
-            border-radius: 12px;
-            display: flex;
-            gap: 12px;
-            z-index: 100;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.8);
-            transition: opacity 0.5s ease, transform 0.5s ease;
-        }
+  .tile-eq{display:flex;align-items:flex-end;gap:2px;height:12px;margin-top:2px;}
+  .tile-eq span{width:3px;background:var(--amber);border-radius:2px;display:none;}
+  .station-tile.playing .tile-eq span{display:block;animation:eqbar .9s ease-in-out infinite;}
+  .station-tile.playing .tile-eq span:nth-child(1){animation-delay:-.8s;}
+  .station-tile.playing .tile-eq span:nth-child(2){animation-delay:-.4s;}
+  .station-tile.playing .tile-eq span:nth-child(3){animation-delay:-.1s;}
 
-        .ui-hidden {
-            opacity: 0;
-            transform: translate(-50%, 20px) !important;
-            pointer-events: none;
-        }
+  audio{display:none;}
 
-        button {
-            background: #22252c;
-            color: #ffffff;
-            border: 1px solid #444855;
-            padding: 12px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 15px;
-            font-weight: 600;
-            transition: all 0.2s ease;
-        }
+  /* ============ UI BAR ============ */
+  #ui-bar{
+    position:absolute;bottom:5%;left:50%;transform:translateX(-50%);
+    display:flex;gap:10px;z-index:100;
+    background:var(--surface-strong);border:1px solid var(--border);backdrop-filter:blur(16px);
+    padding:10px;border-radius:999px;box-shadow:0 15px 45px rgba(0,0,0,.7);
+    transition:opacity .45s ease,transform .45s ease;
+  }
+  .ui-hidden{opacity:0;transform:translate(-50%,26px) !important;pointer-events:none;}
 
-        button:focus, button:hover {
-            background: #e50914;
-            border-color: #ffffff;
-            outline: none;
-            box-shadow: 0 0 12px rgba(229, 9, 20, 0.6);
-        }
+  .pill-btn{
+    display:flex;align-items:center;gap:9px;background:rgba(255,255,255,.045);
+    color:var(--text);border:1px solid transparent;padding:12px 20px;border-radius:999px;
+    cursor:pointer;font-size:.86rem;font-weight:700;letter-spacing:.01em;font-family:inherit;
+    transition:all .18s ease;
+  }
+  .pill-btn svg{width:18px;height:18px;flex-shrink:0;}
+  .pill-btn:hover,.pill-btn:focus{background:rgba(255,255,255,.1);outline:none;}
+  .pill-btn.active{background:var(--amber);color:#241300;}
+  .pill-btn.active:hover{background:var(--amber);}
+  .pill-btn:focus-visible{border-color:var(--cyan);box-shadow:0 0 0 3px var(--cyan-dim);}
+  .pill-btn.danger{color:#ffd7da;}
+  .pill-btn.danger:hover,.pill-btn.danger:focus{background:rgba(255,71,87,.18);color:#fff;}
+  .pill-divider{width:1px;background:var(--border);margin:4px 2px;}
 
-        .btn-off {
-            background: #900c3f;
-            border-color: #ff2e63;
-        }
+  /* ============ STANDBY (power off) ============ */
+  #standby{
+    position:fixed;inset:0;z-index:9998;background:#000;
+    display:none;flex-direction:column;align-items:center;justify-content:center;gap:22px;
+    cursor:pointer;
+  }
+  #standby.show{display:flex;}
+  #standby .mark{font-family:'Archivo Black',sans-serif;font-size:1.5rem;letter-spacing:.3em;
+    color:rgba(255,255,255,.5);animation:breathe 3.2s ease-in-out infinite;}
+  #standby .hint{font-size:.78rem;letter-spacing:.15em;color:rgba(255,255,255,.28);
+    text-transform:uppercase;}
+  @keyframes breathe{0%,100%{opacity:.25;}50%{opacity:.75;}}
 
-        .btn-off:focus, .btn-off:hover {
-            background: #ff0000;
-            box-shadow: 0 0 15px rgba(255, 0, 0, 0.8);
-        }
-    </style>
+  @media (max-width:720px){
+    #station-grid{grid-template-columns:repeat(2,1fr);}
+    .radio-card{padding:24px 20px 20px;}
+    #ui-bar{gap:4px;padding:8px;}
+    .pill-btn{padding:10px 14px;font-size:.78rem;}
+    .pill-btn span.label{display:none;}
+  }
+</style>
 </head>
 <body>
 
-    <!-- Écran de Démarrage Hisense -->
-    <div id="boot-splash">
-        <div class="brand-logo">HISENSE</div>
-        <div class="spinner"></div>
-    </div>
+  <!-- Boot -->
+  <div id="boot-splash">
+    <div class="boot-mark">HISENSE</div>
+    <div class="boot-sub">UHD Experience</div>
+  </div>
 
-    <!-- Lecteur Vidéo UHD (Fond d'écran permanent) -->
-    <div id="video-container">
-        <video id="uhd-player" autoplay muted playsinline preload="auto">
-            <source id="video-source" src="media/videoplayback1boot.mp4" type="video/mp4">
-            Votre navigateur ne supporte pas la lecture vidéo.
-        </video>
-    </div>
+  <!-- Standby / veille -->
+  <div id="standby" onclick="exitStandby()">
+    <div class="mark">HISENSE</div>
+    <div class="hint">Appuyez sur une touche pour reprendre</div>
+  </div>
 
-    <!-- Interface Graphique Radio Web (Overlay Flouté) -->
-    <div id="radio-overlay">
-        <div class="radio-card">
-            <div class="radio-title">📻 Web Radio HD</div>
-            <div id="station-name" class="station-info">Sélectionne une station pour démarrer</div>
+  <!-- Vidéo : deux lecteurs alternés (fondu enchaîné, préchargement) -->
+  <div id="video-container">
+    <video id="video-a" class="is-active" muted playsinline preload="auto">
+      Votre navigateur ne supporte pas la lecture vidéo.
+    </video>
+    <video id="video-b" muted playsinline preload="auto"></video>
+  </div>
+  <div id="vignette"></div>
 
-            <select id="station-select" class="station-select" onchange="changeStation(this.value)">
-                <option value="">-- Choisir une station --</option>
-                <option value="https://stream.fip.fr/fip-midfi.mp3">FIP Radio</option>
-                <option value="https://icecast.radiofrance.fr/mouv-midfi.mp3">Mouv'</option>
-                <option value="https://swr-swr3-live.cast.addradio.de/swr/swr3/live/mp3/128/stream.mp3">SWR3 (Funk / Pop)</option>
-            </select>
+  <!-- Horloge -->
+  <div id="clock-wrap">
+    <div id="clock-time">--:--</div>
+    <div id="clock-date">--</div>
+  </div>
 
-            <audio id="radio-player" controls style="width: 100%; border-radius: 8px;"></audio>
-            
-            <div>
-                <span id="radio-status" class="radio-status-tag">Radio Inactive</span>
-            </div>
+  <!-- Pastille "en cours de lecture" -->
+  <div id="now-playing-pill">
+    <div class="dot"></div>
+    <div class="np-text" id="np-text">—</div>
+    <div class="eq"><span></span><span></span><span></span></div>
+  </div>
+
+  <!-- Panneau radio -->
+  <div id="radio-overlay">
+    <div class="radio-card">
+      <div class="radio-head">
+        <div>
+          <h1>Web <span>Radio</span> HD</h1>
+          <p>Sélection FLAC / Hi-Res — navigation télécommande ou souris</p>
         </div>
+        <div id="radio-status" class="status-tag off">
+          <span class="status-dot"></span>
+          <span id="radio-status-text">Inactive</span>
+        </div>
+      </div>
+
+      <div id="tabs"></div>
+      <div id="station-grid"></div>
     </div>
+  </div>
 
-    <!-- Barre d'outils UI Bottom -->
-    <div id="ui-bar">
-        <button id="btn-radio-toggle" onclick="showRadioUI()" tabindex="1">📻 Afficher Radio</button>
-        <button onclick="toggleFullscreen()" tabindex="2">Plein Écran (Flèche Bas)</button>
-        <button class="btn-off" onclick="turnOffAll()" tabindex="3">🛑 Éteindre / Stop</button>
-    </div>
+  <audio id="radio-player" preload="none"></audio>
 
-    <script>
-        const bootSplash = document.getElementById('boot-splash');
-        const uhdPlayer = document.getElementById('uhd-player');
-        const videoSource = document.getElementById('video-source');
-        const radioOverlay = document.getElementById('radio-overlay');
-        const radioPlayer = document.getElementById('radio-player');
-        const stationName = document.getElementById('station-name');
-        const radioStatus = document.getElementById('radio-status');
-        const uiBar = document.getElementById('ui-bar');
+  <!-- Barre d'outils -->
+  <div id="ui-bar">
+    <button class="pill-btn" id="btn-radio-toggle" onclick="showRadioUI()" tabindex="1">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 11.5 12 5l8 6.5"/><path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9"/><circle cx="12" cy="15" r="2.2"/></svg>
+      <span class="label">Radio</span>
+    </button>
+    <div class="pill-divider"></div>
+    <button class="pill-btn" onclick="toggleFullscreen()" tabindex="2">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+      <span class="label">Plein écran</span>
+    </button>
+    <div class="pill-divider"></div>
+    <button class="pill-btn danger" onclick="enterStandby()" tabindex="3">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77 0"/></svg>
+      <span class="label">Veille</span>
+    </button>
+  </div>
 
-        // Playlist vidéo (Vidéo 1 Boot -> Vidéo 2 -> Vidéo 3 -> ...)
-        const playlist = [
-            "media/videoplayback1boot.mp4",
-            "media/videoplayback2.mp4",
-            "media/videoplayback3.mp4",
-            "media/videoplayback4.mp4"
-        ];
-        let currentVideoIndex = 0;
+<script>
+/* ============================================================
+   PLAYLIST VIDÉO (inchangée — hébergée via GitHub Releases)
+   ============================================================ */
+const playlist = [
+  "https://github.com/NekuYrohs/uhd_and_radio_portal_v3/releases/download/v1.0/videoplayback1boot.mp4",
+  "https://github.com/NekuYrohs/uhd_and_radio_portal_v3/releases/download/v1.0/videoplayback2.webm"
+];
 
-        let radioTimer = null;
-        let uiTimer = null;
-        let isRadioPlaying = false;
+/* ============================================================
+   BIBLIOTHÈQUE RADIO — fusion intelligente & dédupliquée entre
+   le portail Hisense (FIP / Mouv' / SWR3) et l'index radio
+   du projet "ufc-hiit-timer" (flux FLAC / AAC Hi-Res)
+   ============================================================ */
+const stations = [
+  // -- Radio France --
+  { name:"FIP", cat:"Radio France", quality:"MP3 128", url:"https://stream.fip.fr/fip-midfi.mp3" },
+  { name:"Mouv'", cat:"Radio France", quality:"MP3 128", url:"https://icecast.radiofrance.fr/mouv-midfi.mp3" },
+  { name:"France Inter", cat:"Radio France", quality:"AAC Hi-Res", url:"https://icecast.radiofrance.fr/franceinter-hifi.aac" },
+  { name:"France Musique", cat:"Radio France", quality:"AAC Hi-Res", url:"https://icecast.radiofrance.fr/francemusique-hifi.aac" },
+  { name:"France Culture", cat:"Radio France", quality:"AAC Hi-Res", url:"https://icecast.radiofrance.fr/franceculture-hifi.aac" },
+  { name:"France Info", cat:"Radio France", quality:"AAC Hi-Res", url:"https://icecast.radiofrance.fr/franceinfo-hifi.aac" },
 
-        // Auto-Play au Boot
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                bootSplash.style.opacity = '0';
-                setTimeout(() => bootSplash.remove(), 1200);
-            }, 2500);
-            // La vidéo tourne toujours sans son
-            uhdPlayer.muted = true;
-            uhdPlayer.play().catch(e => console.log(e));
-        });
+  // -- FLAC / Hi-Res --
+  { name:"Radio Paradise — Main Mix", cat:"FLAC / Hi-Res", quality:"FLAC", url:"https://stream.radioparadise.com/flac" },
+  { name:"Radio Paradise — Eclectic", cat:"FLAC / Hi-Res", quality:"FLAC", url:"https://stream.radioparadise.com/eclectic-flac" },
+  { name:"Radio Paradise — Global Mix", cat:"FLAC / Hi-Res", quality:"FLAC", url:"https://stream.radioparadise.com/global-flac" },
+  { name:"Fréquence 3", cat:"FLAC / Hi-Res", quality:"FLAC", url:"https://frequence3.net-radio.fr/frequence3.flac" },
 
-        // Gestion de l'enchaînement des vidéos
-        uhdPlayer.addEventListener('ended', () => {
-            currentVideoIndex++;
-            if (currentVideoIndex >= playlist.length) {
-                currentVideoIndex = 1; // Boucle sur les vidéos de test (exclut le boot)
-            }
-            playVideoIndex(currentVideoIndex);
-        });
+  // -- Rap / Hip-Hop --
+  { name:"Record Rap Hits", cat:"Rap / Hip-Hop", quality:"AAC+ 96", url:"https://radiorecord.hostingradio.ru/rap96.aacp" },
+  { name:"Record Rap Classics", cat:"Rap / Hip-Hop", quality:"AAC+ 96", url:"https://radiorecord.hostingradio.ru/rapclassics96.aacp" },
+  { name:"Hot 97 New York", cat:"Rap / Hip-Hop", quality:"AAC", url:"https://stream.revma.ihrhls.com/zc1477" },
+  { name:"Real 92.3 Los Angeles", cat:"Rap / Hip-Hop", quality:"AAC", url:"https://stream.revma.ihrhls.com/zc185" },
 
-        function playVideoIndex(index) {
-            videoSource.src = playlist[index];
-            uhdPlayer.load();
-            uhdPlayer.muted = true; // Forcer muet pour ne pas couper le son de la radio
-            uhdPlayer.play().catch(e => console.log("Erreur vidéo:", e));
-        }
+  // -- Dance / Pop / Funk --
+  { name:"Record Workout", cat:"Dance / Pop", quality:"AAC+ 96", url:"https://radiorecord.hostingradio.ru/workout96.aacp" },
+  { name:"Record Reggae / Dub / Jungle", cat:"Dance / Pop", quality:"AAC+ 96", url:"https://radiorecord.hostingradio.ru/jungle96.aacp" },
+  { name:"iHeart 80s", cat:"Dance / Pop", quality:"AAC", url:"https://stream.revma.ihrhls.com/zc4418" },
+  { name:"102.7 KIIS FM", cat:"Dance / Pop", quality:"AAC", url:"https://stream.revma.ihrhls.com/zc181" },
 
-        // --- GESTION RADIO & TIMER 2 MINUTES ---
+  // -- Europe --
+  { name:"SWR3", cat:"Europe", quality:"MP3 128", url:"https://swr-swr3-live.cast.addradio.de/swr/swr3/live/mp3/128/stream.mp3" }
+];
+const categories = ["Toutes", ...Array.from(new Set(stations.map(s=>s.cat)))];
 
-        function changeStation(url) {
-            if (!url) return;
+/* ============================================================
+   REFERENCES DOM
+   ============================================================ */
+const bootSplash   = document.getElementById('boot-splash');
+const videoEls      = [document.getElementById('video-a'), document.getElementById('video-b')];
+const radioOverlay  = document.getElementById('radio-overlay');
+const radioPlayer   = document.getElementById('radio-player');
+const radioStatus   = document.getElementById('radio-status');
+const radioStatusTx = document.getElementById('radio-status-text');
+const tabsEl        = document.getElementById('tabs');
+const gridEl        = document.getElementById('station-grid');
+const uiBar         = document.getElementById('ui-bar');
+const clockWrap     = document.getElementById('clock-wrap');
+const npPill        = document.getElementById('now-playing-pill');
+const npText        = document.getElementById('np-text');
+const standbyEl     = document.getElementById('standby');
 
-            radioPlayer.src = url;
-            radioPlayer.play();
-            isRadioPlaying = true;
+let radioTimer = null, uiTimer = null, clockTimer = null;
+let isRadioPlaying = false;
+let currentStationIndex = -1;
+let activeCategory = "Toutes";
 
-            const select = document.getElementById('station-select');
-            stationName.innerText = "En écoute : " + select.options[select.selectedIndex].text;
-            radioStatus.innerText = "● EN DIRECT (Vidéo sans son)";
-            radioStatus.style.borderColor = "#28a745";
-            radioStatus.style.color = "#28a745";
+/* ============================================================
+   BOOT
+   ============================================================ */
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    bootSplash.style.opacity = '0';
+    setTimeout(() => bootSplash.remove(), 1000);
+  }, 2200);
+  startVideoLoop();
+  startClock();
+  buildTabs();
+  buildGrid();
+  resetUiTimer();
+});
 
-            // S'assurer que la vidéo tourne bien en fond et MUETTE
-            uhdPlayer.muted = true;
-            if (uhdPlayer.paused) {
-                uhdPlayer.play();
-            }
+/* ============================================================
+   HORLOGE (signature du screensaver)
+   ============================================================ */
+function startClock(){
+  const update = () => {
+    const d = new Date();
+    document.getElementById('clock-time').textContent =
+      d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+    document.getElementById('clock-date').textContent =
+      d.toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'});
+  };
+  update();
+  clockTimer = setInterval(update, 15000);
+}
 
-            resetRadioInactivityTimer();
-        }
+/* ============================================================
+   PLAYLIST VIDÉO — double buffer + fondu enchaîné
+   Le clip suivant est préchargé en arrière-plan pendant la
+   lecture du clip actif, puis les deux fondent l'un dans
+   l'autre : boucle propre, sans coupure ni flash noir.
+   ============================================================ */
+let activeSlot = 0;              // index dans videoEls[] du lecteur visible
+let playIndex  = 0;              // index dans playlist[] en cours de lecture
+let transitionArmed = false;     // évite un double déclenchement (timeupdate + ended)
 
-        // Réinitialise le timer de 2 minutes pour masquer l'interface radio
-        function resetRadioInactivityTimer() {
-            clearTimeout(radioTimer);
-            if (isRadioPlaying) {
-                // Au bout de 2 minutes (120 000 ms), masquer l'interface radio
-                radioTimer = setTimeout(() => {
-                    hideRadioUI();
-                }, 120000); 
-            }
-        }
+function startVideoLoop(){
+  const active = videoEls[activeSlot];
+  const next   = videoEls[1 - activeSlot];
 
-        function hideRadioUI() {
-            radioOverlay.classList.add('radio-hidden');
-            uiBar.classList.add('ui-hidden');
-        }
+  active.muted = true;
+  active.src = playlist[playIndex];
+  active.classList.add('is-active');
+  active.play().catch(e => console.log("Erreur vidéo:", e));
 
-        function showRadioUI() {
-            radioOverlay.classList.remove('radio-hidden');
-            resetUiTimer();
-            resetRadioInactivityTimer();
-        }
+  preloadNext();
 
-        // --- GESTION INTERACTIONS TÉLÉCOMMANDE & SOURIS ---
+  videoEls.forEach(v => {
+    v.addEventListener('timeupdate', onTimeUpdate);
+    v.addEventListener('ended', onEnded);
+    v.addEventListener('error', onEnded);
+  });
+}
 
-        function handleUserActivity() {
-            resetUiTimer();
-            // Réafficher l'interface radio au moindre appui de touche/télécommande
-            if (radioOverlay.classList.contains('radio-hidden')) {
-                showRadioUI();
-            } else {
-                resetRadioInactivityTimer();
-            }
-        }
+function preloadNext(){
+  const next = videoEls[1 - activeSlot];
+  const nextIndex = (playIndex + 1) % playlist.length;
+  next.muted = true;
+  next.src = playlist[nextIndex];
+  next.currentTime = 0;
+  next.load();
+}
 
-        window.addEventListener('mousemove', handleUserActivity);
+function onTimeUpdate(e){
+  if (e.target !== videoEls[activeSlot]) return;
+  const v = e.target;
+  if (!transitionArmed && v.duration && (v.duration - v.currentTime) < 0.9){
+    transitionArmed = true;
+    crossfadeToNext();
+  }
+}
 
-        window.addEventListener('keydown', (e) => {
-            handleUserActivity();
+function onEnded(e){
+  if (e.target !== videoEls[activeSlot]) return;
+  if (!transitionArmed){
+    transitionArmed = true;
+    crossfadeToNext();
+  }
+}
 
-            switch(e.key) {
-                case 'ArrowDown':
-                    e.preventDefault();
-                    toggleFullscreen();
-                    break;
-                case 'ArrowUp':
-                    e.preventDefault();
-                    if (radioOverlay.classList.contains('radio-hidden')) {
-                        showRadioUI();
-                    } else {
-                        hideRadioUI();
-                    }
-                    break;
-                case 'Enter':
-                    if (!document.fullscreenElement) {
-                        toggleFullscreen();
-                    }
-                    break;
-            }
-        });
+function crossfadeToNext(){
+  const outgoing = videoEls[activeSlot];
+  const incoming = videoEls[1 - activeSlot];
 
-        // Masquage rapide de la barre d'outils du bas (3.5s)
-        function resetUiTimer() {
-            uiBar.classList.remove('ui-hidden');
-            clearTimeout(uiTimer);
-            uiTimer = setTimeout(() => {
-                uiBar.classList.add('ui-hidden');
-            }, 3500);
-        }
+  incoming.currentTime = 0;
+  incoming.play().catch(()=>{});
+  incoming.classList.add('is-active');
+  outgoing.classList.remove('is-active');
 
-        // BOUTON ÉTEINDRE / STOP TOTAL
-        function turnOffAll() {
-            isRadioPlaying = false;
-            clearTimeout(radioTimer);
-            radioPlayer.pause();
-            radioPlayer.src = "";
-            uhdPlayer.pause();
-            stationName.innerText = "Système arrêté";
-            radioStatus.innerText = "Radio Inactive";
-            radioStatus.style.borderColor = "rgba(229, 9, 20, 0.5)";
-            radioStatus.style.color = "#ff4d4d";
-            showRadioUI();
-        }
+  activeSlot = 1 - activeSlot;
+  playIndex = (playIndex + 1) % playlist.length;
+  transitionArmed = false;
 
-        // Plein Écran
-        function toggleFullscreen() {
-            if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch(err => console.log(err));
-            } else {
-                document.exitFullscreen().catch(err => console.log(err));
-            }
-        }
-    </script>
+  // Une fois le fondu terminé, on remet l'ancien lecteur en pause
+  // et on précharge le prochain clip dedans.
+  setTimeout(() => {
+    outgoing.pause();
+    preloadNext();
+  }, 1000);
+}
+
+/* ============================================================
+   CONSTRUCTION UI RADIO — onglets + grille
+   ============================================================ */
+function buildTabs(){
+  tabsEl.innerHTML = "";
+  categories.forEach((cat, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'tab focusable-tab' + (cat === activeCategory ? ' active' : '');
+    btn.textContent = cat;
+    btn.dataset.index = i;
+    btn.onclick = () => { activeCategory = cat; focus.zone='tabs'; focus.tab=i; buildTabs(); buildGrid(); applyFocus(); };
+    tabsEl.appendChild(btn);
+  });
+}
+
+function buildGrid(){
+  gridEl.innerHTML = "";
+  const list = filteredStations();
+  list.forEach((st) => {
+    const idx = stations.indexOf(st);
+    const tile = document.createElement('button');
+    tile.className = 'station-tile' + (idx === currentStationIndex && isRadioPlaying ? ' playing' : '');
+    tile.dataset.idx = idx;
+    tile.onclick = () => { playStation(idx); };
+    tile.innerHTML = `
+      <div class="tile-top">
+        <div class="tile-name">${st.name}</div>
+        <div class="tile-quality">${st.quality}</div>
+      </div>
+      <div class="tile-cat">${st.cat}</div>
+      <div class="tile-eq"><span></span><span></span><span></span></div>
+    `;
+    gridEl.appendChild(tile);
+  });
+}
+
+function filteredStations(){
+  return activeCategory === "Toutes" ? stations : stations.filter(s => s.cat === activeCategory);
+}
+
+/* ============================================================
+   LECTURE RADIO
+   ============================================================ */
+function playStation(idx){
+  const st = stations[idx];
+  if (!st) return;
+
+  radioPlayer.src = st.url;
+  radioPlayer.play().catch(e => console.log("Erreur radio:", e));
+  isRadioPlaying = true;
+  currentStationIndex = idx;
+
+  radioStatus.classList.remove('off');
+  radioStatusTx.textContent = "En direct — vidéo sans son";
+
+  npText.textContent = st.name + " · " + st.quality;
+  npPill.classList.add('show');
+
+  const active = videoEls[activeSlot];
+  active.muted = true;
+  if (active.paused) active.play().catch(()=>{});
+
+  buildGrid();
+  resetRadioInactivityTimer();
+}
+
+function stopRadio(){
+  isRadioPlaying = false;
+  currentStationIndex = -1;
+  clearTimeout(radioTimer);
+  radioPlayer.pause();
+  radioPlayer.removeAttribute('src');
+  radioStatus.classList.add('off');
+  radioStatusTx.textContent = "Inactive";
+  npPill.classList.remove('show');
+  buildGrid();
+}
+
+function resetRadioInactivityTimer(){
+  clearTimeout(radioTimer);
+  if (isRadioPlaying){
+    radioTimer = setTimeout(hideRadioUI, 120000);
+  }
+}
+
+/* ============================================================
+   AFFICHAGE PANNEAU / BARRE UI
+   ============================================================ */
+function hideRadioUI(){
+  radioOverlay.classList.add('radio-hidden');
+}
+function showRadioUI(){
+  radioOverlay.classList.remove('radio-hidden');
+  focus.zone = 'tabs'; focus.tab = categories.indexOf(activeCategory); focus.grid = 0;
+  applyFocus();
+  resetUiTimer();
+  resetRadioInactivityTimer();
+}
+function resetUiTimer(){
+  uiBar.classList.remove('ui-hidden');
+  clockWrap.classList.remove('dim');
+  clearTimeout(uiTimer);
+  uiTimer = setTimeout(() => {
+    uiBar.classList.add('ui-hidden');
+    clockWrap.classList.add('dim');
+  }, 4500);
+  resetScreensaverTimer();
+}
+
+/* ============================================================
+   MODE SCREENSAVER — au bout de 2 min sans interaction,
+   l'appli repasse en vidéo plein écran, sans interface,
+   avec la radio (si active) qui continue en fond sonore.
+   ============================================================ */
+const SCREENSAVER_DELAY = 120000; // 2 minutes
+let screensaverTimer = null;
+
+function resetScreensaverTimer(){
+  clearTimeout(screensaverTimer);
+  if (standbyEl.classList.contains('show')) return;
+  screensaverTimer = setTimeout(enterScreensaverMode, SCREENSAVER_DELAY);
+}
+
+function enterScreensaverMode(){
+  hideRadioUI();
+  uiBar.classList.add('ui-hidden');
+  clockWrap.classList.add('dim');
+  if (!document.fullscreenElement){
+    document.documentElement.requestFullscreen().catch(err => {
+      console.log("Plein écran auto refusé par le navigateur :", err);
+    });
+  }
+}
+
+/* ============================================================
+   VEILLE (bouton "power")
+   ============================================================ */
+function enterStandby(){
+  hideRadioUI();
+  clearTimeout(screensaverTimer);
+  videoEls[activeSlot].pause();
+  standbyEl.classList.add('show');
+}
+function exitStandby(){
+  standbyEl.classList.remove('show');
+  videoEls[activeSlot].play().catch(()=>{});
+  resetUiTimer();
+}
+
+/* ============================================================
+   PLEIN ÉCRAN
+   ============================================================ */
+function toggleFullscreen(){
+  if (!document.fullscreenElement){
+    document.documentElement.requestFullscreen().catch(err => console.log(err));
+  } else {
+    document.exitFullscreen().catch(err => console.log(err));
+  }
+}
+
+/* ============================================================
+   NAVIGATION TÉLÉCOMMANDE (grille + onglets)
+   ============================================================ */
+const focus = { zone:'tabs', tab:0, grid:0 };
+const GRID_COLS = 3;
+
+function applyFocus(){
+  document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('tab-focus', focus.zone==='tabs' && i===focus.tab));
+  document.querySelectorAll('.station-tile').forEach((el,i) => el.classList.toggle('tile-focus', focus.zone==='grid' && i===focus.grid));
+  if (focus.zone==='grid'){
+    const el = document.querySelectorAll('.station-tile')[focus.grid];
+    if (el) el.scrollIntoView({block:'nearest'});
+  }
+}
+
+window.addEventListener('mousemove', handleUserActivity);
+function handleUserActivity(){
+  resetUiTimer();
+  if (standbyEl.classList.contains('show')) return;
+  if (radioOverlay.classList.contains('radio-hidden')){
+    // laisse l'utilisateur naviguer sans forcer la réouverture au simple survol souris
+  } else {
+    resetRadioInactivityTimer();
+  }
+}
+
+window.addEventListener('keydown', (e) => {
+  if (standbyEl.classList.contains('show')){
+    e.preventDefault();
+    exitStandby();
+    return;
+  }
+  resetUiTimer();
+
+  const panelOpen = !radioOverlay.classList.contains('radio-hidden');
+
+  if (!panelOpen){
+    switch(e.key){
+      case 'ArrowDown': e.preventDefault(); toggleFullscreen(); break;
+      case 'ArrowUp':   e.preventDefault(); showRadioUI(); break;
+      case 'Enter':     if (!document.fullscreenElement){ toggleFullscreen(); } break;
+    }
+    return;
+  }
+
+  // Panneau radio ouvert : navigation grille / onglets
+  const list = filteredStations();
+  switch(e.key){
+    case 'ArrowRight':
+      e.preventDefault();
+      if (focus.zone === 'tabs') focus.tab = (focus.tab+1) % categories.length;
+      else focus.grid = Math.min(focus.grid+1, list.length-1);
+      applyFocus(); break;
+
+    case 'ArrowLeft':
+      e.preventDefault();
+      if (focus.zone === 'tabs') focus.tab = (focus.tab-1+categories.length) % categories.length;
+      else focus.grid = Math.max(focus.grid-1, 0);
+      applyFocus(); break;
+
+    case 'ArrowDown':
+      e.preventDefault();
+      if (focus.zone === 'tabs'){ focus.zone='grid'; focus.grid=0; }
+      else { focus.grid = Math.min(focus.grid+GRID_COLS, list.length-1); }
+      applyFocus(); break;
+
+    case 'ArrowUp':
+      e.preventDefault();
+      if (focus.zone === 'grid'){
+        if (focus.grid < GRID_COLS){ focus.zone='tabs'; }
+        else { focus.grid -= GRID_COLS; }
+      } else {
+        hideRadioUI();
+      }
+      applyFocus(); break;
+
+    case 'Enter':
+    case ' ':
+      e.preventDefault();
+      if (focus.zone === 'tabs'){
+        activeCategory = categories[focus.tab];
+        buildTabs(); buildGrid(); applyFocus();
+      } else {
+        const st = list[focus.grid];
+        if (st) playStation(stations.indexOf(st));
+      }
+      break;
+
+    case 'Backspace':
+    case 'Escape':
+      e.preventDefault();
+      hideRadioUI();
+      break;
+  }
+});
+</script>
 </body>
 </html>
