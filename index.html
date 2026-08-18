@@ -1,729 +1,89 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>UHD Screensaver & Web Radio Portal — Hisense v4</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0cf9">
+<title>Hisense Web Radio Master</title>
 <style>
-  :root{
-    --bg:#05060a;
-    --surface:rgba(16,18,26,0.66);
-    --surface-strong:rgba(16,18,26,0.86);
-    --border:rgba(255,255,255,0.09);
-    --text:#F5F6FA;
-    --text-dim:#9AA0AE;
-    --cyan:#29D8FF;      /* accent "image / UHD" */
-    --cyan-dim:rgba(41,216,255,0.16);
-    --amber:#FFB020;     /* accent "radio / son" */
-    --amber-dim:rgba(255,176,32,0.16);
-    --danger:#FF4757;
-    --radius-lg:22px;
-    --radius-md:14px;
-    --radius-sm:9px;
-  }
-
-  /* Désactive la sélection de texte, masque le curseur et le trait clignotant */
-  *, html, body, iframe, video, button, select {
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-    caret-color: transparent !important; /* Masque le trait clignotant */
-    outline: none !important;           /* Supprime le cadre d'enfoncement */
-    cursor: none !important;            /* Masque le curseur de la souris */
-  }
-
-  html,body{
-    width:100%;
-    height:100%;
-    overflow:hidden;
-    background:var(--bg);
-    font-family:'Inter',sans-serif;
-    color:var(--text);
-  }
-  ::selection{background:var(--amber);color:#0a0a0a;}
-
-  /* ============ BOOT SPLASH ============ */
-  #boot-splash{
-    position:fixed;inset:0;background:#000;z-index:9999;
-    display:flex;flex-direction:column;justify-content:center;align-items:center;gap:26px;
-    transition:opacity 1s ease;
-  }
-  .boot-mark{
-    font-family:'Archivo Black',sans-serif;font-size:clamp(2.6rem,6vw,4.4rem);
-    letter-spacing:.18em;color:#fff;text-transform:uppercase;position:relative;
-    animation:boot-in 1.4s cubic-bezier(.16,1,.3,1) both;
-  }
-  .boot-mark::after{
-    content:"";position:absolute;left:0;bottom:-10px;height:2px;width:100%;
-    background:linear-gradient(90deg,var(--cyan),var(--amber));
-    transform:scaleX(0);transform-origin:left;animation:boot-line 1.1s .5s cubic-bezier(.16,1,.3,1) forwards;
-  }
-  .boot-sub{font-size:.78rem;letter-spacing:.4em;color:var(--text-dim);text-transform:uppercase;
-    animation:boot-in 1.4s .2s cubic-bezier(.16,1,.3,1) both;}
-  @keyframes boot-in{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
-  @keyframes boot-line{to{transform:scaleX(1);}}
-
-  /* ============ VIDEO (double buffer + fondu enchaîné) ============ */
-  #video-container{position:absolute;inset:0;z-index:1;background:#000;}
-  #video-container video{
-    position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
-    opacity:0;transition:opacity 1s ease;
-  }
-  #video-container video.is-active{opacity:.92;}
-  #vignette{position:absolute;inset:0;z-index:2;pointer-events:none;
-    background:
-      radial-gradient(ellipse at center,rgba(0,0,0,0) 45%,rgba(0,0,0,.55) 100%),
-      linear-gradient(180deg,rgba(0,0,0,.35) 0%,rgba(0,0,0,0) 18%,rgba(0,0,0,0) 72%,rgba(0,0,0,.55) 100%);
-  }
-
-  /* ============ CLOCK (screensaver signature) ============ */
-  #clock-wrap{
-    position:absolute;top:5%;left:5%;z-index:5;
-    transition:opacity .6s ease,transform .6s ease;
-    text-shadow:0 4px 30px rgba(0,0,0,.7);
-  }
-  #clock-time{font-family:'Archivo Black',sans-serif;font-size:clamp(2.4rem,5vw,3.6rem);
-    letter-spacing:.02em;line-height:1;}
-  #clock-date{margin-top:6px;font-size:.95rem;letter-spacing:.12em;text-transform:capitalize;color:var(--text-dim);}
-  #clock-wrap.dim{opacity:.55;}
-
-  #now-playing-pill{
-    position:absolute;top:5%;right:5%;z-index:5;display:none;align-items:center;gap:10px;
-    background:var(--surface);border:1px solid var(--border);backdrop-filter:blur(14px);
-    padding:10px 18px 10px 12px;border-radius:999px;transition:opacity .5s ease,transform .5s ease;
-  }
-  #now-playing-pill.show{display:flex;}
-  #now-playing-pill .dot{width:8px;height:8px;border-radius:50%;background:var(--amber);
-    box-shadow:0 0 10px var(--amber);animation:pulse-dot 1.6s ease-in-out infinite;}
-  @keyframes pulse-dot{0%,100%{opacity:1;}50%{opacity:.35;}}
-  #now-playing-pill .np-text{font-size:.85rem;font-weight:600;letter-spacing:.02em;max-width:280px;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  #now-playing-pill .eq{display:flex;align-items:flex-end;gap:2px;height:14px;}
-  #now-playing-pill .eq span{width:3px;background:var(--amber);border-radius:2px;
-    animation:eqbar 1s ease-in-out infinite;}
-  #now-playing-pill .eq span:nth-child(1){animation-delay:-.9s;}
-  #now-playing-pill .eq span:nth-child(2){animation-delay:-.5s;}
-  #now-playing-pill .eq span:nth-child(3){animation-delay:-.2s;}
-  @keyframes eqbar{0%,100%{height:3px;}50%{height:14px;}}
-
-  /* ============ RADIO OVERLAY ============ */
-  #radio-overlay{
-    position:absolute;inset:0;z-index:10;
-    background:rgba(4,5,8,0.72);backdrop-filter:blur(22px) saturate(1.1);
-    display:flex;justify-content:center;align-items:center;
-    opacity:1;visibility:visible;transition:opacity .55s ease,visibility .55s ease;
-  }
-  .radio-hidden{opacity:0 !important;visibility:hidden !important;pointer-events:none;}
-
-  .radio-card{
-    width:min(920px,92vw);max-height:82vh;
-    background:var(--surface-strong);border:1px solid var(--border);
-    border-radius:var(--radius-lg);box-shadow:0 30px 80px rgba(0,0,0,.75);
-    padding:34px 36px 26px;display:flex;flex-direction:column;gap:20px;
-  }
-
-  .radio-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;}
-  .radio-head h1{font-family:'Archivo Black',sans-serif;font-size:1.7rem;letter-spacing:.02em;}
-  .radio-head h1 span{color:var(--amber);}
-  .radio-head p{margin-top:6px;color:var(--text-dim);font-size:.88rem;}
-  .status-tag{
-    display:flex;align-items:center;gap:8px;background:var(--amber-dim);
-    border:1px solid rgba(255,176,32,.4);color:var(--amber);
-    padding:8px 14px;border-radius:999px;font-size:.78rem;font-weight:700;
-    letter-spacing:.04em;white-space:nowrap;
-  }
-  .status-tag .status-dot{width:7px;height:7px;border-radius:50%;background:var(--amber);}
-  .status-tag.off{background:rgba(255,255,255,.05);border-color:var(--border);color:var(--text-dim);}
-  .status-tag.off .status-dot{background:var(--text-dim);}
-
-  /* Tabs */
-  #tabs{display:flex;gap:8px;flex-wrap:wrap;}
-  .tab{
-    background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--text-dim);
-    padding:9px 16px;border-radius:999px;font-size:.82rem;font-weight:600;letter-spacing:.02em;
-    cursor:pointer;transition:all .18s ease;
-  }
-  .tab:hover{color:var(--text);border-color:rgba(255,255,255,.25);}
-  .tab.active{background:var(--cyan);border-color:var(--cyan);color:#031014;}
-  .tab.tab-focus{outline:2px solid var(--cyan);outline-offset:2px;}
-
-  /* Grid */
-  #station-grid{
-    display:grid;grid-template-columns:repeat(3,1fr);gap:12px;overflow-y:auto;padding:4px 2px 8px;
-    scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent;
-  }
-  #station-grid::-webkit-scrollbar{width:6px;}
-  #station-grid::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:6px;}
-
-  .station-tile{
-    position:relative;background:rgba(255,255,255,.035);border:1px solid var(--border);
-    border-radius:var(--radius-md);padding:14px 16px;cursor:pointer;
-    display:flex;flex-direction:column;gap:8px;text-align:left;
-    transition:background .15s ease,border-color .15s ease,transform .15s ease;
-  }
-  .station-tile:hover{background:rgba(255,255,255,.07);transform:translateY(-2px);}
-  .station-tile.tile-focus{border-color:var(--cyan);box-shadow:0 0 0 2px var(--cyan-dim);}
-  .station-tile.playing{border-color:var(--amber);background:var(--amber-dim);}
-
-  .tile-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
-  .tile-name{font-size:.92rem;font-weight:700;letter-spacing:.01em;line-height:1.25;}
-  .tile-quality{font-size:.66rem;font-weight:700;letter-spacing:.06em;color:var(--text-dim);
-    background:rgba(255,255,255,.06);padding:3px 7px;border-radius:6px;white-space:nowrap;}
-  .tile-cat{font-size:.72rem;color:var(--text-dim);}
-
-  .tile-eq{display:flex;align-items:flex-end;gap:2px;height:12px;margin-top:2px;}
-  .tile-eq span{width:3px;background:var(--amber);border-radius:2px;display:none;}
-  .station-tile.playing .tile-eq span{display:block;animation:eqbar .9s ease-in-out infinite;}
-  .station-tile.playing .tile-eq span:nth-child(1){animation-delay:-.8s;}
-  .station-tile.playing .tile-eq span:nth-child(2){animation-delay:-.4s;}
-  .station-tile.playing .tile-eq span:nth-child(3){animation-delay:-.1s;}
-
-  audio{display:none;}
-
-  /* ============ UI BAR ============ */
-  #ui-bar{
-    position:absolute;bottom:5%;left:50%;transform:translateX(-50%);
-    display:flex;gap:10px;z-index:100;
-    background:var(--surface-strong);border:1px solid var(--border);backdrop-filter:blur(16px);
-    padding:10px;border-radius:999px;box-shadow:0 15px 45px rgba(0,0,0,.7);
-    transition:opacity .45s ease,transform .45s ease;
-  }
-  .ui-hidden{opacity:0;transform:translate(-50%,26px) !important;pointer-events:none;}
-
-  .pill-btn{
-    display:flex;align-items:center;gap:9px;background:rgba(255,255,255,.045);
-    color:var(--text);border:1px solid transparent;padding:12px 20px;border-radius:999px;
-    cursor:pointer;font-size:.86rem;font-weight:700;letter-spacing:.01em;font-family:inherit;
-    transition:all .18s ease;
-  }
-  .pill-btn svg{width:18px;height:18px;flex-shrink:0;}
-  .pill-btn:hover,.pill-btn:focus{background:rgba(255,255,255,.1);outline:none;}
-  .pill-btn.active{background:var(--amber);color:#241300;}
-  .pill-btn.active:hover{background:var(--amber);}
-  .pill-btn:focus-visible{border-color:var(--cyan);box-shadow:0 0 0 3px var(--cyan-dim);}
-  .pill-btn.danger{color:#ffd7da;}
-  .pill-btn.danger:hover,.pill-btn.danger:focus{background:rgba(255,71,87,.18);color:#fff;}
-  .pill-divider{width:1px;background:var(--border);margin:4px 2px;}
-
-  /* ============ STANDBY (power off) ============ */
-  #standby{
-    position:fixed;inset:0;z-index:9998;background:#000;
-    display:none;flex-direction:column;align-items:center;justify-content:center;gap:22px;
-    cursor:pointer;
-  }
-  #standby.show{display:flex;}
-  #standby .mark{font-family:'Archivo Black',sans-serif;font-size:1.5rem;letter-spacing:.3em;
-    color:rgba(255,255,255,.5);animation:breathe 3.2s ease-in-out infinite;}
-  #standby .hint{font-size:.78rem;letter-spacing:.15em;color:rgba(255,255,255,.28);
-    text-transform:uppercase;}
-  @keyframes breathe{0%,100%{opacity:.25;}50%{opacity:.75;}}
-
-  @media (max-width:720px){
-    #station-grid{grid-template-columns:repeat(2,1fr);}
-    .radio-card{padding:24px 20px 20px;}
-    #ui-bar{gap:4px;padding:8px;}
-    .pill-btn{padding:10px 14px;font-size:.78rem;}
-    .pill-btn span.label{display:none;}
-  }
+:root{--bg:#0b0cf9ed;--panel:#031223e5;--panel2:#111c31d9;--line:#ffffff20;--text:#f7f9ff;--muted:#a3a9c2;--cyan:#9cdcff;--amber:#ffb238;--danger:#ff7182;--radius:18px}
+*{box-sizing:border-box;caret-color:transparent}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#03040a;color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif}input{caret-color:auto}button,input{font:inherit}button{border:0;color:inherit;cursor:pointer}button:focus-visible,input:focus-visible{outline:3px solid var(--cyan);outline-offset:3px}body.tv-mode{cursor:none}body.tv-mode button{cursor:none}
+#app{position:fixed;inset:0;overflow:hidden;background:radial-gradient(circle at 75% -15%,#193e78 0,transparent 38%),radial-gradient(circle at 10% 100%,#081c42 0,transparent 34%),var(--bg)}
+#videoLayer,#videoLayer video,#videoShade{position:absolute;inset:0;width:100%;height:100%}#videoLayer{z-index:0;background:#000;opacity:0;transition:opacity .8s}#videoLayer.active{z-index:90;opacity:1}body.screen-saver-mode #shell,body.screen-saver-mode #dock,body.screen-saver-mode #toast,body.screen-saver-mode #manager{opacity:0!important;visibility:hidden!important;pointer-events:none!important}body.screen-saver-mode #videoLayer{position:fixed;z-index:90;inset:0}body.screen-saver-mode #videoShade{position:fixed;z-index:91;inset:0;background:#0002}body.screen-black-mode #videoLayer,body.screen-black-mode #videoShade{background:#000!important;opacity:1!important}body.screen-black-mode #videoLayer video{opacity:0!important}#standby{position:absolute;z-index:110;inset:0;display:grid;place-items:center;background:#000;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .8s,visibility .8s}#standby.visible{opacity:1;visibility:visible;pointer-events:auto}#standby.black{background:#000}#standby .standby-logo{font-size:clamp(4rem,12vw,11rem);font-weight:800;letter-spacing:.24em;padding-left:.24em;background:linear-gradient(120deg,#fff,#9bdfff,#fff);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 45px #49dcff30;animation:standbyLogo 1.1s ease both}#standby p{margin:24px 0 0;text-align:center;color:#8b9bb5;font-size:.75rem;letter-spacing:.35em}@keyframes standbyLogo{from{opacity:0;transform:scale(.92);filter:blur(12px)}to{opacity:1;transform:scale(1);filter:blur(0)}}#videoLayer video{object-fit:cover;opacity:0;transition:opacity .8s}#videoLayer video.active{opacity:.88}#videoShade{z-index:1;pointer-events:none;background:linear-gradient(180deg,#03050bd9 0%,#03050b42 45%,#03050bd9 100%),radial-gradient(ellipse at center,transparent 25%,#000b 100%)}
+#boot{position:absolute;z-index:100;inset:0;display:grid;place-items:center;background:#000;transition:opacity .75s ease,visibility .75s}.boot-content{text-align:center;animation:bootIn 1.25s cubic-bezier(.16,1,.3,1) both}.boot-logo{font-weight:800;font-size:clamp(4.5rem,13vw,13rem);letter-spacing:.24em;padding-left:.24em;background:linear-gradient(120deg,#fff,#9bdfff 55%,#fff);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 55px #50dfff32}.boot-line{width:0;height:3px;margin:25px auto 20px;background:linear-gradient(90deg,var(--cyan),var(--amber));animation:lineIn 1.2s .55s ease forwards}.boot-sub{font-size:clamp(.7rem,1vw,1rem);letter-spacing:.6em;color:#9aabc9}.boot-power{position:absolute;bottom:8vh;left:50%;transform:translateX(-50%);font-size:.72rem;letter-spacing:.22em;color:#667793;animation:fadeIn 1s 1.1s both}@keyframes bootIn{from{opacity:0;transform:scale(.82);filter:blur(16px)}to{opacity:1;transform:scale(1);filter:blur(0)}}@keyframes lineIn{to{width:65vw;max-width:560px}}@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+#shell{position:absolute;z-index:5;inset:0;display:grid;grid-template-columns:235px 1fr;gap:0;padding:0;transition:opacity .4s,transform .4s}#shell.hidden{opacity:0;pointer-events:none;transform:scale(1.02)}
+#sidebar{display:flex;flex-direction:column;padding:5vh 22px 4vh;border-right:1px solid var(--line);background:#050b18cc;backdrop-filter:blur(25px)}.brand-small{font-weight:800;font-size:1.65rem;letter-spacing:-.06em}.brand-small span{color:var(--cyan)}.brand-caption{margin-top:10px;color:var(--muted);font-size:.72rem;line-height:1.55;letter-spacing:.12em}.nav{display:grid;gap:9px;margin-top:8vh}.nav-btn{display:flex;align-items:center;gap:14px;padding:16px 14px;border-radius:14px;background:transparent;color:#dbe4f3;text-align:left;font-weight:700}.nav-btn .icon{width:24px;text-align:center;color:#96a7c2;font-size:1.35rem}.nav-btn:hover,.nav-btn.active,.nav-btn.focus{background:linear-gradient(90deg,#1bd7ff25,transparent);box-shadow:inset 4px 0 var(--cyan);color:#5de6ff}.nav-btn:hover .icon,.nav-btn.active .icon{color:var(--cyan)}.side-bottom{margin-top:auto;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:.78rem;line-height:1.65}.side-bottom b{color:var(--cyan)}
+#main{min-width:0;padding:5vh 4.3vw 13vh;overflow:hidden;background:linear-gradient(110deg,#07112677,#05081722)}.topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:30px}.eyebrow{font-size:.78rem;letter-spacing:.38em;color:#aabbd5;font-weight:800}.title{margin:10px 0 0;font-size:clamp(2.4rem,4.4vw,5rem);line-height:1;letter-spacing:-.065em}.subtitle{margin:12px 0 0;color:var(--muted);font-size:clamp(.85rem,1.1vw,1.1rem)}.clock{text-align:right}.clock strong{font-size:clamp(2rem,3.6vw,4rem);font-weight:300;letter-spacing:-.06em}.clock small{display:block;color:var(--muted);margin-top:4px;text-transform:capitalize}.status-container{display:flex;align-items:center;gap:16px;margin-top:18px}.status{display:inline-flex;align-items:center;gap:10px;padding:10px 15px;border:1px solid #49dcff70;border-radius:25px;background:#49dcff12;color:#62e5ff;font-size:.8rem;font-weight:800}.status.off{color:var(--muted);border-color:var(--line);background:#ffffff08}.status i{width:8px;height:8px;border-radius:50%;background:#38ff55;box-shadow:0 0 13px #9f38ff}.equalizer-container{width:110px;height:26px;display:flex;align-items:center;justify-content:center}#equalizerCanvas{width:100%;height:100%;display:block;filter:drop-shadow(0 0 6px rgba(0,229,255,0.6))}
+#filters{display:flex;gap:10px;flex-wrap:wrap;margin:5vh 0 18px}.filter{padding:11px 17px;border:1px solid var(--line);border-radius:24px;background:#ffffff08;color:#b9c7da;font-weight:700;font-size:.84rem}.filter:hover,.filter.active,.filter.focus{border-color:var(--cyan);background:#49dcff17;color:#5de6ff;box-shadow:0 0 18px #49dcff1d}
+#grid{height:calc(100vh - 320px);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:minmax(108px,1fr);gap:14px;overflow:auto;padding:4px 5px 25px 2px;scrollbar-color:#49dcff88 transparent}.station{position:relative;display:grid;grid-template-columns:54px 1fr;grid-template-rows:auto auto 1fr;gap:3px 13px;min-height:108px;padding:15px;text-align:left;border:1px solid var(--line);border-radius:16px;background:linear-gradient(145deg,#ffffff12,#ffffff05);box-shadow:inset 0 1px #ffffff12;transition:transform .18s,border-color .18s,background .18s}.station:hover,.station.focus{transform:translateY(-3px);border-color:var(--cyan);background:#123356bb;box-shadow:0 0 0 2px #49dcff2b,0 14px 30px #0006}.station.playing{border-color:#c338ff;background:#ffb23819;box-shadow:0 0 0 2px #ffb23827,0 0 24px #ffb23819}.logo{grid-row:1/4;width:54px;height:54px;border-radius:13px;overflow:hidden;display:grid;place-items:center;background:linear-gradient(145deg,#17446c,#091526);color:#5de6ff;font-weight:900;font-size:1.25rem}.logo img{width:100%;height:100%;object-fit:cover}.station strong{align-self:end;font-size:clamp(.88rem,1.15vw,1.2rem);line-height:1.18}.station em{font-size:.73rem;color:var(--muted);font-style:normal}.bars{display:flex;align-items:flex-end;gap:3px;height:13px}.bars i{width:3px;height:4px;background:#38ff55;border-radius:3px}.playing .bars i:nth-child(1){height:9px}.playing .bars i:nth-child(2){height:13px}.playing .bars i:nth-child(3){height:7px}.custom-badge{position:absolute;right:9px;top:7px;color:#6ce7ff;font-size:.58rem;letter-spacing:.08em}
+#dock{position:absolute;z-index:20;left:calc(50% + 110px);bottom:4vh;transform:translateX(-50%);display:flex;gap:7px;padding:8px;border:1px solid var(--line);border-radius:35px;background:#071020e8;backdrop-filter:blur(24px);box-shadow:0 18px 60px #000a}.dock-btn{display:flex;align-items:center;gap:9px;padding:14px 20px;border-radius:26px;background:#ffffff09;font-weight:800}.dock-btn:hover,.dock-btn.focus{background:#49dcff1c;box-shadow:0 0 0 2px var(--cyan)}.dock-btn.active{background:#4b16d2;color:#201300}.divider{width:1px;background:var(--line);margin:4px 0}
+#toast{position:absolute;z-index:70;left:50%;top:8%;transform:translateX(-50%);padding:13px 19px;border:1px solid #49dcff66;border-radius:25px;background:#081326ee;box-shadow:0 10px 35px #0008;opacity:0;pointer-events:none;transition:opacity .2s}.toast{opacity:1!important}
+#manager{position:absolute;z-index:60;inset:0;display:grid;place-items:center;background:#0009;backdrop-filter:blur(18px)}#manager.hidden{display:none}.modal{width:min(700px,88vw);max-height:88vh;overflow:auto;padding:28px 32px;border:1px solid #49dcff55;border-radius:22px;background:linear-gradient(145deg,#152744fa,#071020fa);box-shadow:0 25px 90px #000}.modal-head{display:flex;justify-content:space-between;gap:20px}.modal h2{margin:0;font-size:1.8rem}.modal p{margin:8px 0 0;color:var(--muted)}.close{width:42px;height:42px;border:1px solid var(--line);border-radius:50%;background:#ffffff0b;font-size:1.6rem}.form-label{display:block;margin-top:16px;color:#c9d5e8;font-size:.84rem}.form-input{width:100%;margin-top:7px;padding:13px 14px;border:1px solid var(--line);border-radius:11px;background:#0005;color:#fff}.form-input::placeholder{color:#677891}.form-input:focus{border-color:var(--cyan)}.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}.actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}.action{padding:13px 18px;border-radius:11px;font-weight:800}.action.secondary{background:#ffffff12}.action.primary{background:var(--cyan);color:#031015}.saved{display:grid;gap:8px;margin-top:24px}.saved-item{display:flex;align-items:center;gap:11px;padding:10px;border:1px solid var(--line);border-radius:11px;background:#ffffff08}.saved-item .saved-name{flex:1}.saved-item button{padding:8px 10px;border-radius:8px;background:#ffffff12;font-size:.75rem}.saved-item .delete{color:#ff9eaa}.wallpaper-panel{margin-top:28px;padding-top:22px;border-top:1px solid var(--line)}.wallpaper-panel h3{margin:0;font-size:1.2rem}.wallpaper-panel p{color:var(--muted);font-size:.82rem;line-height:1.45}.wallpaper-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:15px 0}.wallpaper-choice{position:relative;min-height:75px;padding:0;overflow:hidden;border:2px solid transparent;border-radius:12px;background:#101a2c}.wallpaper-choice:hover,.wallpaper-choice.focus,.wallpaper-choice.selected{border-color:var(--cyan)}.wallpaper-choice img{width:100%;height:100%;min-height:75px;display:block;object-fit:cover}.wallpaper-choice span{position:absolute;left:8px;bottom:7px;padding:3px 7px;border-radius:10px;background:#000b;font-size:.7rem}.upload-wallpaper{display:block;margin:10px 0;padding:12px;border:1px dashed #49dcff66;border-radius:11px;color:#64e5ff;text-align:center;font-weight:700;cursor:pointer}.upload-wallpaper input{display:none}@media(max-width:780px){.wallpaper-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:1150px){#shell{grid-template-columns:190px 1fr}#sidebar{padding-left:16px;padding-right:16px}#grid{grid-template-columns:repeat(3,minmax(0,1fr))}#dock{left:55%}}@media(max-width:780px){#shell{grid-template-columns:64px 1fr}#sidebar{padding:3vh 8px}.brand-small{font-size:0}.brand-small:after{content:'H';font-size:2rem;color:var(--cyan)}.brand-caption,.nav-btn .label,.side-bottom{display:none}.nav{margin-top:5vh}.nav-btn{justify-content:center;padding:15px 4px}.nav-btn .icon{font-size:1.4rem}#main{padding:3vh 3vw 13vh}.title{font-size:2.4rem}.subtitle{font-size:.75rem}.clock strong{font-size:2rem}#grid{grid-template-columns:repeat(2,minmax(0,1fr));height:calc(100vh - 270px);gap:9px}.station{min-height:92px;padding:11px;grid-template-columns:42px 1fr;column-gap:9px}.logo{width:42px;height:42px}.dock-btn{padding:11px 13px}.dock-btn .label{display:none}.row{grid-template-columns:1fr}}
 </style>
 </head>
-<body>
-
-  <!-- Boot -->
-  <div id="boot-splash">
-    <div class="boot-mark">HISENSE</div>
-    <div class="boot-sub">UHD Experience</div>
-  </div>
-
-  <!-- Standby / veille -->
-  <div id="standby" onclick="exitStandby()">
-    <div class="mark">HISENSE</div>
-    <div class="hint">Appuyez sur une touche pour reprendre</div>
-  </div>
-
-  <!-- Vidéo : deux lecteurs alternés (fondu enchaîné, préchargement) -->
-  <div id="video-container">
-    <video id="video-a" class="is-active" muted playsinline preload="auto">
-      Votre navigateur ne supporte pas la lecture vidéo.
-    </video>
-    <video id="video-b" muted playsinline preload="auto"></video>
-  </div>
-  <div id="vignette"></div>
-
-  <!-- Horloge -->
-  <div id="clock-wrap">
-    <div id="clock-time">--:--</div>
-    <div id="clock-date">--</div>
-  </div>
-
-  <!-- Pastille "en cours de lecture" -->
-  <div id="now-playing-pill">
-    <div class="dot"></div>
-    <div class="np-text" id="np-text">—</div>
-    <div class="eq"><span></span><span></span><span></span></div>
-  </div>
-
-  <!-- Panneau radio -->
-  <div id="radio-overlay">
-    <div class="radio-card">
-      <div class="radio-head">
-        <div>
-          <h1>Web <span>Radio</span> HD</h1>
-          <p>Sélection FLAC / Hi-Res — navigation télécommande ou souris</p>
-        </div>
-        <div id="radio-status" class="status-tag off">
-          <span class="status-dot"></span>
-          <span id="radio-status-text">Inactive</span>
-        </div>
-      </div>
-
-      <div id="tabs"></div>
-      <div id="station-grid"></div>
-    </div>
-  </div>
-
-  <audio id="radio-player" preload="none"></audio>
-
-  <!-- Barre d'outils -->
-  <div id="ui-bar">
-    <button class="pill-btn" id="btn-radio-toggle" onclick="showRadioUI()" tabindex="1">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 11.5 12 5l8 6.5"/><path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9"/><circle cx="12" cy="15" r="2.2"/></svg>
-      <span class="label">Radio</span>
-    </button>
-    <div class="pill-divider"></div>
-    <button class="pill-btn" onclick="toggleFullscreen()" tabindex="2">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
-      <span class="label">Plein écran</span>
-    </button>
-    <div class="pill-divider"></div>
-    <button class="pill-btn danger" onclick="enterStandby()" tabindex="3">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77 0"/></svg>
-      <span class="label">Veille</span>
-    </button>
-  </div>
-
+<body class="pc-mode">
+<div id="app">
+<div id="videoLayer"><video id="videoA" muted playsinline preload="auto"></video><video id="videoB" muted playsinline preload="auto"></video></div><div id="videoShade"></div><div id="standby"><div><div class="standby-logo">HISENSE</div><p>EXTINCTION DE L’ÉCRAN</p></div></div>
+<div id="boot"><div class="boot-content"><div class="boot-logo">HISENSE</div><div class="boot-line"></div><div class="boot-sub">WEB RADIO · UHD EXPERIENCE</div></div><div class="boot-power">INITIALISATION DU SYSTÈME</div></div>
+<div id="shell">
+<aside id="sidebar"><div class="brand-small">H<span>isense</span></div><div class="brand-caption">WEB RADIO<br>UHD SCREENSAVER</div><nav class="nav"><button class="nav-btn active" id="navHome"><span class="icon">⌂</span><span class="label">Accueil</span></button><button class="nav-btn" id="navRadios"><span class="icon">◉</span><span class="label">Toutes les radios</span></button><button class="nav-btn" id="navFavorites"><span class="icon">♡</span><span class="label">Favoris</span></button><button class="nav-btn" id="navSettings"><span class="icon">⚙</span><span class="label">Gérer mes radios</span></button></nav><div class="side-bottom">SCREENSAVER UHD<br><b>Après 00:45 d’inactivité</b></div></aside>
+<main id="main"><div class="topbar"><div><div class="eyebrow">HISENSE · SMART TV</div><h1 class="title">Web Radio</h1><p class="subtitle">Des milliers de stations. Un son qui vous ressemble.</p><div class="status-container"><div id="status" class="status off"><i></i><span>Radio inactive</span></div><div class="equalizer-container"><canvas id="equalizerCanvas"></canvas></div></div></div><div class="clock"><strong id="time">--:--</strong><small id="date">--</small></div></div><div id="filters"></div><div id="grid"></div></main></div>
+<div id="dock"><button class="dock-btn active" id="radioToggle">◉ <span class="label">Radio</span></button><div class="divider"></div><button class="dock-btn" id="fullToggle">⛶ <span class="label">Plein écran</span></button><div class="divider"></div><button class="dock-btn" id="standbyToggle">◐ <span class="label">Veille</span></button></div>
+<div id="toast"></div>
+<div id="manager" class="hidden"><section class="modal"><div class="modal-head"><div><h2>Gérer mes radios</h2><p>Ajoutez vos stations et leurs logos sans toucher au code.</p></div><button class="close" id="closeManager">×</button></div><form id="stationForm"><input type="hidden" id="editId"><label class="form-label">Nom de la radio<input class="form-input" id="formName" required placeholder="Ma radio"></label><label class="form-label">URL du flux audio<input class="form-input" id="formUrl" type="url" required placeholder="https://…"></label><div class="row"><label class="form-label">Catégorie<input class="form-input" id="formCat" required value="Mes radios"></label><label class="form-label">Qualité<input class="form-input" id="formQuality" value="MP3 128"></label></div><label class="form-label">URL du logo <small>(facultatif)</small><input class="form-input" id="formLogo" type="url" placeholder="https://…/logo.png"></label><div class="actions"><button type="button" class="action secondary" id="cancelEdit">Annuler</button><button class="action primary">Enregistrer</button></div></form><div id="saved" class="saved"></div><section class="wallpaper-panel"><h3>Fond d’écran</h3><p>Choisissez un fond du projet ou chargez une image depuis votre PC. Le choix reste mémorisé.</p><div id="wallpaperGrid" class="wallpaper-grid"></div><label class="upload-wallpaper">+ Charger une image depuis le PC<input id="wallpaperFile" type="file" accept="image/png,image/jpeg,image/webp"></label><button type="button" class="action secondary" id="clearWallpaper">Réinitialiser le fond</button></section></section></div>
+<audio id="audio" preload="none"></audio>
+</div>
 <script>
-/* ============================================================
-   PLAYLIST VIDÉO (inchangée — hébergée via GitHub Releases)
-   ============================================================ */
-const playlist = [
-  "https://github.com/NekuYrohs/uhd_and_radio_portal_v3/releases/download/v1.0/videoplayback1boot.mp4",
-  "https://github.com/NekuYrohs/uhd_and_radio_portal_v3/releases/download/v1.0/videoplayback2.webm"
+'use strict';
+const $=id=>document.getElementById(id);
+const videoPlaylist=['https://github.com/NekuYrohs/uhd_and_radio_portal_v3/releases/download/v1.0/videoplayback1boot.mp4','https://github.com/NekuYrohs/uhd_and_radio_portal_v3/releases/download/v1.0/videoplayback2.webm'];
+const stations=[
+{name:'FIP',cat:'Radio France',quality:'MP3 128',url:'https://stream.fip.fr/fip-midfi.mp3'},{name:"Mouv'",cat:'Radio France',quality:'MP3 128',url:'https://icecast.radiofrance.fr/mouv-midfi.mp3'},{name:'France Inter',cat:'Radio France',quality:'AAC Hi-Res',url:'https://icecast.radiofrance.fr/franceinter-hifi.aac'},{name:'France Musique',cat:'Radio France',quality:'AAC Hi-Res',url:'https://icecast.radiofrance.fr/francemusique-hifi.aac'},{name:'France Culture',cat:'Radio France',quality:'AAC Hi-Res',url:'https://icecast.radiofrance.fr/franceculture-hifi.aac'},{name:'France Info',cat:'Radio France',quality:'AAC Hi-Res',url:'https://icecast.radiofrance.fr/franceinfo-hifi.aac'},{name:'Radio Paradise — Main Mix',cat:'FLAC / Hi-Res',quality:'FLAC',url:'https://stream.radioparadise.com/flac'},{name:'Radio Paradise — Eclectic',cat:'FLAC / Hi-Res',quality:'FLAC',url:'https://stream.radioparadise.com/eclectic-flac'},{name:'Radio Paradise — Global Mix',cat:'FLAC / Hi-Res',quality:'FLAC',url:'https://stream.radioparadise.com/global-flac'},{name:'Fréquence 3',cat:'FLAC / Hi-Res',quality:'FLAC',url:'https://frequence3.net-radio.fr/frequence3.flac'},{name:'Record Rap Hits',cat:'Rap / Hip-Hop',quality:'AAC+ 96',url:'https://radiorecord.hostingradio.ru/rap96.aacp'},{name:'Record Rap Classics',cat:'Rap / Hip-Hop',quality:'AAC+ 96',url:'https://radiorecord.hostingradio.ru/rapclassics96.aacp'},{name:'Hot 97 New York',cat:'Rap / Hip-Hop',quality:'AAC',url:'https://stream.revma.ihrhls.com/zc1477'},{name:'Real 92.3 Los Angeles',cat:'Rap / Hip-Hop',quality:'AAC',url:'https://stream.revma.ihrhls.com/zc185'},{name:'Record Workout',cat:'Dance / Pop',quality:'AAC+ 96',url:'https://radiorecord.hostingradio.ru/workout96.aacp'},{name:'Record Reggae / Dub / Jungle',cat:'Dance / Pop',quality:'AAC+ 96',url:'https://radiorecord.hostingradio.ru/jungle96.aacp'},{name:'iHeart 80s',cat:'Dance / Pop',quality:'AAC',url:'https://stream.revma.ihrhls.com/zc4418'},{name:'102.7 KIIS FM',cat:'Dance / Pop',quality:'AAC',url:'https://stream.revma.ihrhls.com/zc181'},{name:'Skyrock',cat:'Rap / Hip-Hop',quality:'AAC 128',url:'https://icecast.skyrock.net/s/natio_aac_64k'}
 ];
+const refs={app:$('app'),shell:$('shell'),grid:$('grid'),filters:$('filters'),audio:$('audio'),status:$('status'),now:null,manager:$('manager'),saved:$('saved'),toast:$('toast'),videoLayer:$('videoLayer'),videos:[$('videoA'),$('videoB')],standby:$('standby'),wallpaperGrid:$('wallpaperGrid'),canvas:$('equalizerCanvas')};
+let category='Toutes',stationIndex=-1,screenSaver=false,screenTimer=0,videoSlot=0,focusIndex=0,screenBlackTimer=0;const SCREENSAVER_DELAY=45000,SCREEN_BLACK_DELAY=3600000,CUSTOM_KEY='hisense_master_custom_radios';
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+const custom=s=>!!s.custom;const WALLPAPER_KEY='hisense_master_wallpaper';const wallpaperPresets=[{name:'Apple TV Purple',url:'assets/backgrounds/apple-tv-purple-tv.jpg'},{name:'Rainbow Spectrum',url:'assets/backgrounds/rainbow-dots-tv.jpg'},{name:'Purple Streaks',url:'assets/backgrounds/purple-streaks-tv.jpg'},{name:'Neon Waves',url:'assets/backgrounds/neon-waves-tv.jpg'}];
 
-/* ============================================================
-   BIBLIOTHÈQUE RADIO
-   ============================================================ */
-const stations = [
-  // -- Radio France --
-  { name:"FIP", cat:"Radio France", quality:"MP3 128", url:"https://stream.fip.fr/fip-midfi.mp3" },
-  { name:"Mouv'", cat:"Radio France", quality:"MP3 128", url:"https://icecast.radiofrance.fr/mouv-midfi.mp3" },
-  { name:"France Inter", cat:"Radio France", quality:"AAC Hi-Res", url:"https://icecast.radiofrance.fr/franceinter-hifi.aac" },
-  { name:"France Musique", cat:"Radio France", quality:"AAC Hi-Res", url:"https://icecast.radiofrance.fr/francemusique-hifi.aac" },
-  { name:"France Culture", cat:"Radio France", quality:"AAC Hi-Res", url:"https://icecast.radiofrance.fr/franceculture-hifi.aac" },
-  { name:"France Info", cat:"Radio France", quality:"AAC Hi-Res", url:"https://icecast.radiofrance.fr/franceinfo-hifi.aac" },
+/* Égaliseur Canvas Animé */
+const ctx=refs.canvas.getContext('2d');
+const barCount=10,barSpacing=4;let animationFrameId=null,barHeights=new Array(barCount).fill(3);
+function initCanvas(){refs.canvas.width=(refs.canvas.offsetWidth||110)*(window.devicePixelRatio||1);refs.canvas.height=(refs.canvas.offsetHeight||26)*(window.devicePixelRatio||1)}
+function drawEqualizer(){ctx.clearRect(0,0,refs.canvas.width,refs.canvas.height);const w=refs.canvas.width,h=refs.canvas.height;const totalSpacing=barSpacing*(barCount-1);const barWidth=(w-totalSpacing)/barCount;const gradient=ctx.createLinearGradient(0,h,0,0);gradient.addColorStop(0,'#00e5ff');gradient.addColorStop(0.7,'#7b2cbf');gradient.addColorStop(1,'#ff007f');ctx.fillStyle=gradient;for(let i=0;i<barCount;i++){const targetHeight=Math.random()*(h-4)+3;barHeights[i]+=(targetHeight-barHeights[i])*0.28;const barH=barHeights[i];const x=i*(barWidth+barSpacing);const y=h-barH;ctx.beginPath();if(ctx.roundRect)ctx.roundRect(x,y,barWidth,barH,2);else ctx.rect(x,y,barWidth,barH);ctx.fill()}animationFrameId=requestAnimationFrame(drawEqualizer)}
+function startEqualizer(){if(!animationFrameId)drawEqualizer()}
+function stopEqualizer(){if(animationFrameId){cancelAnimationFrame(animationFrameId);animationFrameId=null}ctx.clearRect(0,0,refs.canvas.width,refs.canvas.height);barHeights.fill(3);const w=refs.canvas.width,h=refs.canvas.height;const barWidth=(w-(barSpacing*(barCount-1)))/barCount;ctx.fillStyle='#00e5ff33';for(let i=0;i<barCount;i++){const x=i*(barWidth+barSpacing);ctx.beginPath();if(ctx.roundRect)ctx.roundRect(x,h-3,barWidth,3,1);else ctx.rect(x,h-3,barWidth,3);ctx.fill()}}
 
-  // -- FLAC / Hi-Res --
-  { name:"Radio Paradise — Main Mix", cat:"FLAC / Hi-Res", quality:"FLAC", url:"https://stream.radioparadise.com/flac" },
-  { name:"Radio Paradise — Eclectic", cat:"FLAC / Hi-Res", quality:"FLAC", url:"https://stream.radioparadise.com/eclectic-flac" },
-  { name:"Radio Paradise — Global Mix", cat:"FLAC / Hi-Res", quality:"FLAC", url:"https://stream.radioparadise.com/global-flac" },
-  { name:"Fréquence 3", cat:"FLAC / Hi-Res", quality:"FLAC", url:"https://frequence3.net-radio.fr/frequence3.flac" },
-
-  // -- Rap / Hip-Hop --
-  { name:"Record Rap Hits", cat:"Rap / Hip-Hop", quality:"AAC+ 96", url:"https://radiorecord.hostingradio.ru/rap96.aacp" },
-  { name:"Record Rap Classics", cat:"Rap / Hip-Hop", quality:"AAC+ 96", url:"https://radiorecord.hostingradio.ru/rapclassics96.aacp" },
-  { name:"Hot 97 New York", cat:"Rap / Hip-Hop", quality:"AAC", url:"https://stream.revma.ihrhls.com/zc1477" },
-  { name:"Real 92.3 Los Angeles", cat:"Rap / Hip-Hop", quality:"AAC", url:"https://stream.revma.ihrhls.com/zc185" },
-
-  // -- Dance / Pop / Funk --
-  { name:"Record Workout", cat:"Dance / Pop", quality:"AAC+ 96", url:"https://radiorecord.hostingradio.ru/workout96.aacp" },
-  { name:"Record Reggae / Dub / Jungle", cat:"Dance / Pop", quality:"AAC+ 96", url:"https://radiorecord.hostingradio.ru/jungle96.aacp" },
-  { name:"iHeart 80s", cat:"Dance / Pop", quality:"AAC", url:"https://stream.revma.ihrhls.com/zc4418" },
-  { name:"102.7 KIIS FM", cat:"Dance / Pop", quality:"AAC", url:"https://stream.revma.ihrhls.com/zc181" },
-
-  // -- Europe --
-  { name:"SWR3", cat:"Europe", quality:"MP3 128", url:"https://swr-swr3-live.cast.addradio.de/swr/swr3/live/mp3/128/stream.mp3" }
-];
-const categories = ["Toutes", ...Array.from(new Set(stations.map(s=>s.cat)))];
-
-/* ============================================================
-   REFERENCES DOM
-   ============================================================ */
-const bootSplash   = document.getElementById('boot-splash');
-const videoEls      = [document.getElementById('video-a'), document.getElementById('video-b')];
-const radioOverlay  = document.getElementById('radio-overlay');
-const radioPlayer   = document.getElementById('radio-player');
-const radioStatus   = document.getElementById('radio-status');
-const radioStatusTx = document.getElementById('radio-status-text');
-const tabsEl        = document.getElementById('tabs');
-const gridEl        = document.getElementById('station-grid');
-const uiBar         = document.getElementById('ui-bar');
-const clockWrap     = document.getElementById('clock-wrap');
-const npPill        = document.getElementById('now-playing-pill');
-const npText        = document.getElementById('np-text');
-const standbyEl     = document.getElementById('standby');
-
-let radioTimer = null, uiTimer = null, clockTimer = null;
-let isRadioPlaying = false;
-let currentStationIndex = -1;
-let activeCategory = "Toutes";
-
-/* ============================================================
-   BOOT
-   ============================================================ */
-window.addEventListener('load', () => {
-  setTimeout(() => {
-    bootSplash.style.opacity = '0';
-    setTimeout(() => bootSplash.remove(), 1000);
-  }, 2200);
-  startVideoLoop();
-  startClock();
-  buildTabs();
-  buildGrid();
-  resetUiTimer();
-});
-
-/* ============================================================
-   HORLOGE
-   ============================================================ */
-function startClock(){
-  const update = () => {
-    const d = new Date();
-    document.getElementById('clock-time').textContent =
-      d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
-    document.getElementById('clock-date').textContent =
-      d.toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'});
-  };
-  update();
-  clockTimer = setInterval(update, 15000);
-}
-
-/* ============================================================
-   PLAYLIST VIDÉO
-   ============================================================ */
-let activeSlot = 0;
-let playIndex  = 0;
-let transitionArmed = false;
-
-function startVideoLoop(){
-  const active = videoEls[activeSlot];
-
-  active.muted = true;
-  active.src = playlist[playIndex];
-  active.classList.add('is-active');
-  active.play().catch(e => console.log("Erreur vidéo:", e));
-
-  preloadNext();
-
-  videoEls.forEach(v => {
-    v.addEventListener('timeupdate', onTimeUpdate);
-    v.addEventListener('ended', onEnded);
-    v.addEventListener('error', onEnded);
-  });
-}
-
-function preloadNext(){
-  const next = videoEls[1 - activeSlot];
-  const nextIndex = (playIndex + 1) % playlist.length;
-  next.muted = true;
-  next.src = playlist[nextIndex];
-  next.currentTime = 0;
-  next.load();
-}
-
-function onTimeUpdate(e){
-  if (e.target !== videoEls[activeSlot]) return;
-  const v = e.target;
-  if (!transitionArmed && v.duration && (v.duration - v.currentTime) < 0.9){
-    transitionArmed = true;
-    crossfadeToNext();
-  }
-}
-
-function onEnded(e){
-  if (e.target !== videoEls[activeSlot]) return;
-  if (!transitionArmed){
-    transitionArmed = true;
-    crossfadeToNext();
-  }
-}
-
-function crossfadeToNext(){
-  const outgoing = videoEls[activeSlot];
-  const incoming = videoEls[1 - activeSlot];
-
-  incoming.currentTime = 0;
-  incoming.play().catch(()=>{});
-  incoming.classList.add('is-active');
-  outgoing.classList.remove('is-active');
-
-  activeSlot = 1 - activeSlot;
-  playIndex = (playIndex + 1) % playlist.length;
-  transitionArmed = false;
-
-  setTimeout(() => {
-    outgoing.pause();
-    preloadNext();
-  }, 1000);
-}
-
-/* ============================================================
-   CONSTRUCTION UI RADIO
-   ============================================================ */
-function buildTabs(){
-  tabsEl.innerHTML = "";
-  categories.forEach((cat, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'tab focusable-tab' + (cat === activeCategory ? ' active' : '');
-    btn.textContent = cat;
-    btn.dataset.index = i;
-    btn.onclick = () => { activeCategory = cat; focus.zone='tabs'; focus.tab=i; buildTabs(); buildGrid(); applyFocus(); };
-    tabsEl.appendChild(btn);
-  });
-}
-
-function buildGrid(){
-  gridEl.innerHTML = "";
-  const list = filteredStations();
-  list.forEach((st) => {
-    const idx = stations.indexOf(st);
-    const tile = document.createElement('button');
-    tile.className = 'station-tile' + (idx === currentStationIndex && isRadioPlaying ? ' playing' : '');
-    tile.dataset.idx = idx;
-    tile.onclick = () => { playStation(idx); };
-    tile.innerHTML = `
-      <div class="tile-top">
-        <div class="tile-name">${st.name}</div>
-        <div class="tile-quality">${st.quality}</div>
-      </div>
-      <div class="tile-cat">${st.cat}</div>
-      <div class="tile-eq"><span></span><span></span><span></span></div>
-    `;
-    gridEl.appendChild(tile);
-  });
-}
-
-function filteredStations(){
-  return activeCategory === "Toutes" ? stations : stations.filter(s => s.cat === activeCategory);
-}
-
-/* ============================================================
-   LECTURE RADIO
-   ============================================================ */
-function playStation(idx){
-  const st = stations[idx];
-  if (!st) return;
-
-  radioPlayer.src = st.url;
-  radioPlayer.play().catch(e => console.log("Erreur radio:", e));
-  isRadioPlaying = true;
-  currentStationIndex = idx;
-
-  radioStatus.classList.remove('off');
-  radioStatusTx.textContent = "En direct — vidéo sans son";
-
-  npText.textContent = st.name + " · " + st.quality;
-  npPill.classList.add('show');
-
-  const active = videoEls[activeSlot];
-  active.muted = true;
-  if (active.paused) active.play().catch(()=>{});
-
-  buildGrid();
-  resetRadioInactivityTimer();
-}
-
-function stopRadio(){
-  isRadioPlaying = false;
-  currentStationIndex = -1;
-  clearTimeout(radioTimer);
-  radioPlayer.pause();
-  radioPlayer.removeAttribute('src');
-  radioStatus.classList.add('off');
-  radioStatusTx.textContent = "Inactive";
-  npPill.classList.remove('show');
-  buildGrid();
-}
-
-function resetRadioInactivityTimer(){
-  clearTimeout(radioTimer);
-  if (isRadioPlaying){
-    radioTimer = setTimeout(hideRadioUI, 120000);
-  }
-}
-
-/* ============================================================
-   AFFICHAGE PANNEAU / BARRE UI
-   ============================================================ */
-function hideRadioUI(){
-  radioOverlay.classList.add('radio-hidden');
-}
-function showRadioUI(){
-  radioOverlay.classList.remove('radio-hidden');
-  focus.zone = 'tabs'; focus.tab = categories.indexOf(activeCategory); focus.grid = 0;
-  applyFocus();
-  resetUiTimer();
-  resetRadioInactivityTimer();
-}
-function resetUiTimer(){
-  uiBar.classList.remove('ui-hidden');
-  clockWrap.classList.remove('dim');
-  clearTimeout(uiTimer);
-  uiTimer = setTimeout(() => {
-    uiBar.classList.add('ui-hidden');
-    clockWrap.classList.add('dim');
-  }, 4500);
-  resetScreensaverTimer();
-}
-
-/* ============================================================
-   MODE SCREENSAVER
-   ============================================================ */
-const SCREENSAVER_DELAY = 120000;
-let screensaverTimer = null;
-
-function resetScreensaverTimer(){
-  clearTimeout(screensaverTimer);
-  if (standbyEl.classList.contains('show')) return;
-  screensaverTimer = setTimeout(enterScreensaverMode, SCREENSAVER_DELAY);
-}
-
-function enterScreensaverMode(){
-  hideRadioUI();
-  uiBar.classList.add('ui-hidden');
-  clockWrap.classList.add('dim');
-  if (!document.fullscreenElement){
-    document.documentElement.requestFullscreen().catch(err => {
-      console.log("Plein écran auto refusé par le navigateur :", err);
-    });
-  }
-}
-
-/* ============================================================
-   VEILLE
-   ============================================================ */
-function enterStandby(){
-  hideRadioUI();
-  clearTimeout(screensaverTimer);
-  videoEls[activeSlot].pause();
-  standbyEl.classList.add('show');
-}
-function exitStandby(){
-  standbyEl.classList.remove('show');
-  videoEls[activeSlot].play().catch(()=>{});
-  resetUiTimer();
-}
-
-/* ============================================================
-   PLEIN ÉCRAN
-   ============================================================ */
-function toggleFullscreen(){
-  if (!document.fullscreenElement){
-    document.documentElement.requestFullscreen().catch(err => console.log(err));
-  } else {
-    document.exitFullscreen().catch(err => console.log(err));
-  }
-}
-
-/* ============================================================
-   NAVIGATION TÉLÉCOMMANDE
-   ============================================================ */
-const focus = { zone:'tabs', tab:0, grid:0 };
-const GRID_COLS = 3;
-
-function applyFocus(){
-  document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('tab-focus', focus.zone==='tabs' && i===focus.tab));
-  document.querySelectorAll('.station-tile').forEach((el,i) => el.classList.toggle('tile-focus', focus.zone==='grid' && i===focus.grid));
-  if (focus.zone==='grid'){
-    const el = document.querySelectorAll('.station-tile')[focus.grid];
-    if (el) el.scrollIntoView({block:'nearest'});
-  }
-}
-
-window.addEventListener('mousemove', handleUserActivity);
-function handleUserActivity(){
-  resetUiTimer();
-  if (standbyEl.classList.contains('show')) return;
-  if (!radioOverlay.classList.contains('radio-hidden')){
-    resetRadioInactivityTimer();
-  }
-}
-
-window.addEventListener('keydown', (e) => {
-  if (standbyEl.classList.contains('show')){
-    e.preventDefault();
-    exitStandby();
-    return;
-  }
-  resetUiTimer();
-
-  const panelOpen = !radioOverlay.classList.contains('radio-hidden');
-
-  if (!panelOpen){
-    switch(e.key){
-      case 'ArrowDown': e.preventDefault(); toggleFullscreen(); break;
-      case 'ArrowUp':   e.preventDefault(); showRadioUI(); break;
-      case 'Enter':     if (!document.fullscreenElement){ toggleFullscreen(); } break;
-    }
-    return;
-  }
-
-  const list = filteredStations();
-  switch(e.key){
-    case 'ArrowRight':
-      e.preventDefault();
-      if (focus.zone === 'tabs') focus.tab = (focus.tab+1) % categories.length;
-      else focus.grid = Math.min(focus.grid+1, list.length-1);
-      applyFocus(); break;
-
-    case 'ArrowLeft':
-      e.preventDefault();
-      if (focus.zone === 'tabs') focus.tab = (focus.tab-1+categories.length) % categories.length;
-      else focus.grid = Math.max(focus.grid-1, 0);
-      applyFocus(); break;
-
-    case 'ArrowDown':
-      e.preventDefault();
-      if (focus.zone === 'tabs'){ focus.zone='grid'; focus.grid=0; }
-      else { focus.grid = Math.min(focus.grid+GRID_COLS, list.length-1); }
-      applyFocus(); break;
-
-    case 'ArrowUp':
-      e.preventDefault();
-      if (focus.zone === 'grid'){
-        if (focus.grid < GRID_COLS){ focus.zone='tabs'; }
-        else { focus.grid -= GRID_COLS; }
-      } else {
-        hideRadioUI();
-      }
-      applyFocus(); break;
-
-    case 'Enter':
-    case ' ':
-      e.preventDefault();
-      if (focus.zone === 'tabs'){
-        activeCategory = categories[focus.tab];
-        buildTabs(); buildGrid(); applyFocus();
-      } else {
-        const st = list[focus.grid];
-        if (st) playStation(stations.indexOf(st));
-      }
-      break;
-
-    case 'Backspace':
-    case 'Escape':
-      e.preventDefault();
-      hideRadioUI();
-      break;
-  }
-});
+function applyWallpaper(url){if(!url){refs.app.style.backgroundImage='';localStorage.removeItem(WALLPAPER_KEY)}else{refs.app.style.backgroundImage=`linear-gradient(110deg,rgba(3,6,15,.78),rgba(3,6,15,.35)),url("${url}")`;refs.app.style.backgroundSize='cover';refs.app.style.backgroundPosition='center';localStorage.setItem(WALLPAPER_KEY,url)}renderWallpapers()}function renderWallpapers(){const current=localStorage.getItem(WALLPAPER_KEY)||'';refs.wallpaperGrid.innerHTML=wallpaperPresets.map(w=>`<button class="wallpaper-choice ${current===w.url?'selected':''}" data-wallpaper="${esc(w.url)}"><img src="${esc(w.url)}" alt=""><span>${esc(w.name)}</span></button>`).join('');refs.wallpaperGrid.querySelectorAll('[data-wallpaper]').forEach(b=>b.onclick=()=>applyWallpaper(b.dataset.wallpaper))}function loadWallpaper(){const saved=localStorage.getItem(WALLPAPER_KEY);if(saved)applyWallpaper(saved)}function notify(t){refs.toast.textContent=t;refs.toast.classList.add('toast');clearTimeout(notify.timer);notify.timer=setTimeout(()=>refs.toast.classList.remove('toast'),2800)}
+function loadCustom(){try{const a=JSON.parse(localStorage.getItem(CUSTOM_KEY)||'[]');if(Array.isArray(a))a.forEach(s=>s.name&&s.url&&stations.push({...s,custom:true}))}catch(e){notify('Impossible de charger les radios personnelles')}}function saveCustom(){localStorage.setItem(CUSTOM_KEY,JSON.stringify(stations.filter(custom)))}
+function categories(){return ['Toutes',...new Set(stations.map(s=>s.cat))]}
+function logo(s){const letter=esc((s.name||'?').trim()[0].toUpperCase());return s.logo?`<span class="logo"><img src="${esc(s.logo)}" alt=""></span>`:`<span class="logo">${letter}</span>`}
+function renderFilters(){refs.filters.innerHTML=categories().map(c=>`<button class="filter ${c===category?'active':''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('');refs.filters.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{category=b.dataset.cat;renderFilters();renderGrid()})}
+function renderGrid(){const list=stations.filter(s=>category==='Toutes'||s.cat===category);refs.grid.innerHTML=list.map(s=>{const i=stations.indexOf(s);return `<button class="station ${i===stationIndex?'playing':''}" data-i="${i}">${logo(s)}<strong>${esc(s.name)}</strong><em>${esc(s.cat)} · ${esc(s.quality)}</em><span class="bars"><i></i><i></i><i></i></span>${custom(s)?'<span class="custom-badge">PERSO</span>':''}</button>`}).join('');refs.grid.querySelectorAll('.station').forEach(b=>b.onclick=()=>playStation(Number(b.dataset.i)))}
+function status(on,text){refs.status.classList.toggle('off',!on);refs.status.querySelector('span').textContent=text||(on?'Lecture radio':'Radio inactive')}
+function stopVideos(){refs.videos.forEach(v=>{try{v.pause()}catch(e){}v.classList.remove('active')});refs.videoLayer.classList.remove('active')}
+function blackenAfterOneHour(){if(!screenSaver)return;document.body.classList.add('screen-black-mode');refs.videos.forEach(v=>{try{v.pause()}catch(e){}})}
+function startScreensaver(){if(stationIndex<0)return;if(screenSaver)return;screenSaver=true;clearTimeout(screenBlackTimer);document.body.classList.remove('screen-black-mode');document.body.classList.add('screen-saver-mode');refs.videoLayer.classList.add('active');const v=refs.videos[videoSlot];v.classList.add('active');const p=v.play();if(p)p.catch(()=>{});screenBlackTimer=setTimeout(blackenAfterOneHour,SCREEN_BLACK_DELAY)}
+function stopScreensaver(){screenSaver=false;clearTimeout(screenBlackTimer);document.body.classList.remove('screen-saver-mode','screen-black-mode');stopVideos()}
+function armScreensaver(){clearTimeout(screenTimer);if(stationIndex<0)return;screenTimer=setTimeout(()=>{if(stationIndex>=0&&!document.hidden)startScreensaver()},SCREENSAVER_DELAY)}
+function wake(){refs.standby.classList.remove('visible','black');refs.shell.classList.remove('hidden');if(screenSaver)stopScreensaver();armScreensaver()}
+function prepareVideo(i,v){v.src=videoPlaylist[i];v.preload='auto';v.load()}
+function bindVideoLoop(v,index){v.onended=()=>{const current=v,nextIndex=(index+1)%videoPlaylist.length,next=refs.videos[videoSlot?0:1];const switchToNext=()=>{next.oncanplay=null;next.currentTime=0;const p=next.play();if(p)p.catch(()=>{});next.classList.add('active');current.classList.remove('active');videoSlot=videoSlot?0:1;setTimeout(()=>{prepareVideo((nextIndex+1)%videoPlaylist.length,current);bindVideoLoop(current,(nextIndex+1)%videoPlaylist.length)},250)};next.oncanplay=switchToNext;if(next.readyState>=3)switchToNext();else next.load()};v.onerror=()=>setTimeout(()=>{prepareVideo(index,v);bindVideoLoop(v,index)},6000)}
+function initVideos(){prepareVideo(0,refs.videos[0]);prepareVideo(1,refs.videos[1]);bindVideoLoop(refs.videos[0],0);bindVideoLoop(refs.videos[1],1)}
+async function playStation(i){const s=stations[i];wake();stopScreensaver();refs.audio.pause();refs.audio.src=s.url;refs.audio.load();try{await refs.audio.play();stationIndex=i;status(true,'En écoute · '+s.name);startEqualizer();renderGrid();notify('Lecture de '+s.name);armScreensaver()}catch(e){stationIndex=-1;status(false);stopEqualizer();renderGrid();notify('Flux indisponible ou refusé : '+s.name)}}
+function stopRadio(){clearTimeout(screenTimer);refs.audio.pause();refs.audio.removeAttribute('src');refs.audio.load();stationIndex=-1;status(false);stopEqualizer();stopScreensaver();renderGrid()}
+function toggleFullscreen(){const el=document.documentElement,enter=el.requestFullscreen||el.webkitRequestFullscreen;if(!document.fullscreenElement&&!document.webkitFullscreenElement&&enter)Promise.resolve(enter.call(el)).catch(()=>notify('Autorisez le plein écran dans le navigateur TV'));else{const exit=document.exitFullscreen||document.webkitExitFullscreen;if(exit)exit.call(document)}}
+function clock(){const d=new Date();$('time').textContent=d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});$('date').textContent=d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}
+function clearForm(){$('editId').value='';$('stationForm').reset();$('formCat').value='Mes radios';$('formQuality').value='MP3 128'}
+function renderSaved(){const list=stations.filter(custom);refs.saved.innerHTML=list.length?list.map(s=>{const i=stations.indexOf(s);return `<div class="saved-item"><span class="saved-name"><b>${esc(s.name)}</b><small> · ${esc(s.cat)}</small></span><button data-edit="${i}">Modifier</button><button class="delete" data-delete="${i}">Supprimer</button></div>`}).join(''):'<p style="color:var(--muted)">Aucune radio personnelle pour le moment.</p>';refs.saved.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editStation(Number(b.dataset.edit)));refs.saved.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>deleteStation(Number(b.dataset.delete)))}
+function openManager(){wake();refs.manager.classList.remove('hidden');renderSaved();renderWallpapers();$('formName').focus()}function closeManager(){refs.manager.classList.add('hidden');clearForm()}function editStation(i){const s=stations[i];$('editId').value=i;$('formName').value=s.name;$('formUrl').value=s.url;$('formCat').value=s.cat;$('formQuality').value=s.quality;$('formLogo').value=s.logo||'';$('formName').focus()}
+function deleteStation(i){if(!stations[i]||!custom(stations[i]))return;if(i===stationIndex)stopRadio();stations.splice(i,1);saveCustom();renderFilters();renderGrid();renderSaved();notify('Radio supprimée')}
+$('stationForm').onsubmit=e=>{e.preventDefault();const d={name:$('formName').value.trim(),url:$('formUrl').value.trim(),cat:$('formCat').value.trim()||'Mes radios',quality:$('formQuality').value.trim()||'MP3',logo:$('formLogo').value.trim(),custom:true},i=Number($('editId').value);if(Number.isInteger(i)&&i>=0&&stations[i]&&custom(stations[i]))stations[i]={...stations[i],...d};else stations.push(d);saveCustom();category=d.cat;renderFilters();renderGrid();renderSaved();clearForm();notify('Radio enregistrée')};
+$('closeManager').onclick=closeManager;$('cancelEdit').onclick=clearForm;$('clearWallpaper').onclick=()=>applyWallpaper('');$('wallpaperFile').onchange=e=>{const file=e.target.files&&e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{applyWallpaper(reader.result);notify('Fond d’écran chargé depuis le PC')};reader.readAsDataURL(file)};$('navSettings').onclick=openManager;$('navHome').onclick=()=>{category='Toutes';renderFilters();renderGrid()};$('navRadios').onclick=()=>{category='Toutes';renderFilters();renderGrid()};$('navFavorites').onclick=()=>notify('Les favoris sont prêts à être ajoutés');$('radioToggle').onclick=()=>stationIndex>=0?stopRadio():notify('Sélectionnez une radio');$('fullToggle').onclick=toggleFullscreen;$('standbyToggle').onclick=()=>{stopRadio();refs.shell.classList.add('hidden');stopScreensaver();refs.standby.classList.add('visible');setTimeout(()=>refs.standby.classList.add('black'),2200)};
+$('app').addEventListener('pointerdown',e=>{if(e.target.closest('#standby')){wake();return}wake()},{passive:true});document.addEventListener('keydown',e=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter','Escape',' ','MediaPlayPause'].includes(e.key)){if(e.key!=='Tab')e.preventDefault();wake();if(e.key==='Escape'){closeManager();return}if(e.key==='MediaPlayPause'&&stationIndex>=0)stopRadio()}});refs.audio.addEventListener('error',()=>{if(stationIndex>=0){stationIndex=-1;status(false);stopEqualizer();stopScreensaver();clearTimeout(screenTimer);renderGrid()}notify('Erreur du flux audio')});
+refs.audio.addEventListener('pause',stopEqualizer);
+refs.audio.addEventListener('ended',stopEqualizer);
+window.addEventListener('load',()=>{initCanvas();stopEqualizer();loadCustom();loadWallpaper();renderFilters();renderGrid();renderSaved();renderWallpapers();clock();setInterval(clock,15000);initVideos();setTimeout(()=>{$('boot').style.opacity='0';$('boot').style.visibility='hidden'},3800)});
 </script>
 </body>
 </html>
